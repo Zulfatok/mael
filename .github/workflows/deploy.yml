@@ -8,23 +8,31 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Apply schema.sql to D1 + Deploy Worker
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Kalau pakai dependency (postal-mime), pastikan ada package.json
+      - name: Install dependencies (optional)
+        run: |
+          if [ -f package.json ]; then
+            npm install
+          fi
+
+      - name: Apply schema to D1 (remote)
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          # Jalankan ini sebelum deploy
-          preCommands: |
-            npm install
-            wrangler d1 execute mail_portal --file=./schema.sql --remote --yes
-          # Deploy worker
+          command: d1 execute mail_portal --file=./schema.sql --remote --yes
+
+      - name: Deploy Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy
-          # Optional: kalau kamu mau set Worker Secrets via Actions
-          # (hapus blok secrets ini kalau tidak dipakai)
-          secrets: |
-            RESEND_API_KEY
-        env:
-          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
