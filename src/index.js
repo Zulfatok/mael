@@ -1,26 +1,17 @@
 // src/index.js
-import PostalMime from "postal-mime";
+// Org_Lemah Mail Portal - Full Script with Improved Modern UI
+// Ready to deploy!
 
-/**
- * Cloudflare Email Routing + Email Worker + Web Inbox
- * Features:
- * - Signup/Login/Logout
- * - Reset password (optional via Resend)
- * - Alias management with per-user limit
- * - Admin dashboard: list users, set alias limit, disable user
- * - Email handler: accept via catch-all, store if alias registered else reject
- */
+import PostalMime from "postal-mime";
 
 const encoder = new TextEncoder();
 
-// -------------------- Security/Hashing constants --------------------
-const PBKDF2_MAX_ITERS = 100000; // Cloudflare Workers WebCrypto limit
-const PBKDF2_MIN_ITERS = 10000;  // keep a sensible floor
-
-// Cache (per isolate) whether DB has users.pass_iters column
+// Security/Hashing constants
+const PBKDF2_MAX_ITERS = 100000;
+const PBKDF2_MIN_ITERS = 10000;
 let USERS_HAS_PASS_ITERS = null;
 
-// -------------------- Response helpers --------------------
+// Response helpers
 function json(data, status = 200, headers = {}) {
   return new Response(JSON.stringify(data, null, 2), {
     status,
@@ -60,7 +51,7 @@ function notFound() {
   return json({ ok: false, error: "Not found" }, 404);
 }
 
-// -------------------- Utils --------------------
+// Utils
 function safeInt(v, fallback) {
   const n = Number(v);
   return Number.isFinite(n) ? n : fallback;
@@ -76,13 +67,10 @@ function clampPbkdf2Iters(n) {
 }
 
 function pbkdf2Iters(env) {
-  // IMPORTANT: Workers WebCrypto max 100000, jadi kita clamp.
-  // Env PBKDF2_ITERS boleh diset, tapi tetap tidak bisa > 100000.
   return clampPbkdf2Iters(env.PBKDF2_ITERS ?? PBKDF2_MAX_ITERS);
 }
 
 function base64Url(bytes) {
-  // small arrays only (we only use for salts/tokens/hashes) -> safe
   const bin = String.fromCharCode(...bytes);
   const b64 = btoa(bin);
   return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
@@ -103,7 +91,6 @@ async function sha256Base64Url(inputBytes) {
 }
 
 async function pbkdf2HashBase64Url(password, saltBytes, iterations) {
-  // Fail-fast bila someone tries to pass > max
   const it = safeInt(iterations, 0);
   if (it > PBKDF2_MAX_ITERS) {
     const err = new Error(
@@ -172,7 +159,6 @@ async function readJson(request) {
 }
 
 function validLocalPart(local) {
-  // simple + aman: huruf angka . _ + - (1..64)
   return /^[a-z0-9][a-z0-9._+-]{0,63}$/.test(local);
 }
 
@@ -188,7 +174,7 @@ async function usersHasPassIters(env) {
   return USERS_HAS_PASS_ITERS;
 }
 
-// -------------------- UI: Brand + Template --------------------
+// UI: Brand + Template
 const LOGO_SVG = `
 <svg viewBox="0 0 64 64" width="34" height="34" aria-hidden="true" focusable="false">
   <defs>
@@ -264,135 +250,427 @@ function pageTemplate(title, body, extraHead = "") {
       --bg:#0b0f14;
       --card:#0f172a;
       --card2:#0b1220;
+      --card-hover:#15213b;
       --border:#22314a;
+      --border-light:#2d3f5f;
       --text:#e6edf3;
+      --text-bright:#f0f6fc;
       --muted:#93a4b8;
+      --muted-dark:#6b7a8f;
       --brand:#7dd3fc;
+      --brand-glow:rgba(125,211,252,0.3);
+      --accent:#818cf8;
       --danger:#ef4444;
       --ok:#22c55e;
+      --warning:#f59e0b;
     }
-    *{box-sizing:border-box}
+
+    *{box-sizing:border-box;margin:0;padding:0}
+
     body{
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       margin:0;
       background:
-        radial-gradient(1200px 600px at 20% -10%, rgba(125,211,252,.13), transparent 60%),
-        radial-gradient(900px 500px at 90% 0%, rgba(99,102,241,.12), transparent 55%),
-        radial-gradient(700px 400px at 30% 110%, rgba(34,197,94,.07), transparent 55%),
+        radial-gradient(1400px 700px at 15% -5%, rgba(125,211,252,.15), transparent 60%),
+        radial-gradient(1000px 600px at 88% 3%, rgba(129,140,248,.13), transparent 55%),
+        radial-gradient(800px 500px at 25% 105%, rgba(34,197,94,.08), transparent 55%),
         var(--bg);
+      background-attachment: fixed;
       color:var(--text);
       min-height:100vh;
+      line-height:1.6;
     }
-    a{color:var(--brand);text-decoration:none}
-    a:hover{opacity:.92;text-decoration:underline}
 
-    .wrap{max-width:980px;margin:0 auto;padding:18px}
+    b, strong { font-weight:600; color:var(--text-bright) }
+    a{color:var(--brand);text-decoration:none;transition:opacity .2s}
+    a:hover{opacity:.85;text-decoration:underline}
+
+    .wrap{max-width:1180px;margin:0 auto;padding:20px}
+
     .hdr{
-      display:flex;justify-content:space-between;align-items:center;
-      gap:14px; padding:12px 0 4px;
-    }
-    .brand{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-    .logo{display:flex;align-items:center}
-    .brandText{display:flex;flex-direction:column;line-height:1.05}
-    .brandName{font-weight:800;letter-spacing:.2px}
-    .brandSub{color:var(--muted);font-size:12.5px;margin-top:3px}
-    .hdrRight{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-
-    .card{
-      background: linear-gradient(180deg, rgba(255,255,255,.035), transparent 40%), var(--card);
-      border:1px solid rgba(34,49,74,.9);
-      border-radius:18px;
-      padding:16px;
-      margin:12px 0;
-      box-shadow: 0 10px 30px rgba(0,0,0,.28);
-      overflow:hidden;
-    }
-
-    input,button,select,textarea{font:inherit}
-    label{display:block;margin-bottom:6px;color:var(--muted);font-size:13px}
-    input,select,textarea{
-      width:100%;
-      padding:11px 12px;
-      border-radius:12px;
-      border:1px solid rgba(34,49,74,.95);
-      background: var(--card2);
-      color:var(--text);
-      outline:none;
-    }
-    input:focus,select:focus,textarea:focus{
-      border-color: rgba(125,211,252,.7);
-      box-shadow: 0 0 0 4px rgba(125,211,252,.12);
-    }
-
-    button{
-      padding:10px 12px;
-      border-radius:12px;
-      border:1px solid rgba(34,49,74,.95);
-      background: rgba(125,211,252,.12);
-      color:var(--text);
-      cursor:pointer;
-      transition: transform .06s ease, background .15s ease, border-color .15s ease;
-      white-space:nowrap;
-    }
-    button:hover{background: rgba(125,211,252,.18); border-color: rgba(125,211,252,.25)}
-    button:active{transform: translateY(1px)}
-    .btn-primary{
-      background: linear-gradient(135deg, rgba(125,211,252,.28), rgba(99,102,241,.18));
-      border-color: rgba(125,211,252,.35);
-    }
-    .btn-ghost{
-      background: rgba(255,255,255,.03);
-    }
-    .muted{color:var(--muted)}
-    .pill{
-      display:inline-flex;align-items:center;gap:6px;
-      padding:5px 10px;border-radius:999px;
-      border:1px solid rgba(34,49,74,.95);
-      background: rgba(255,255,255,.03);
-      color:var(--muted);
-      font-size:12px;
-    }
-
-    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-
-    pre{margin:10px 0 0;white-space:pre-wrap;word-break:break-word}
-    .danger{
-      border-color: rgba(239,68,68,.45);
-      background: rgba(239,68,68,.10);
-    }
-    .danger:hover{background: rgba(239,68,68,.14); border-color: rgba(239,68,68,.55)}
-    .hr{border:0;border-top:1px solid rgba(34,49,74,.95);margin:12px 0}
-
-    .split{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:12px;
-      align-items:start;
-    }
-    .listItem{
-      padding:10px 0;
-      border-bottom:1px solid rgba(34,49,74,.95);
       display:flex;
       justify-content:space-between;
       align-items:center;
-      gap:10px;
-      flex-wrap:wrap;
+      gap:16px;
+      padding:16px 0;
+      margin-bottom:8px;
     }
-    .kbd{
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      font-size: 12px;
-      padding:2px 8px;
-      border-radius:999px;
-      border:1px solid rgba(34,49,74,.95);
-      background: rgba(255,255,255,.03);
-      color: var(--muted);
+    .brand{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+    .logo{display:flex;align-items:center}
+    .brandText{display:flex;flex-direction:column;line-height:1.1}
+    .brandName{
+      font-weight:800;
+      font-size:18px;
+      letter-spacing:0.3px;
+      background:linear-gradient(135deg, var(--brand), var(--accent));
+      -webkit-background-clip:text;
+      -webkit-text-fill-color:transparent;
+      background-clip:text;
+    }
+    .brandSub{color:var(--muted);font-size:13px;margin-top:4px}
+    .hdrRight{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+    .card{
+      background: linear-gradient(145deg, rgba(255,255,255,.045) 0%, rgba(255,255,255,.01) 100%), var(--card);
+      border:1px solid var(--border);
+      border-radius:20px;
+      padding:20px;
+      margin:14px 0;
+      box-shadow: 
+        0 10px 40px rgba(0,0,0,.4),
+        0 2px 8px rgba(0,0,0,.3),
+        inset 0 1px 0 rgba(255,255,255,.05);
+      overflow:hidden;
+      transition: border-color .3s, box-shadow .3s;
+    }
+    .card:hover{
+      border-color:var(--border-light);
+      box-shadow: 
+        0 12px 50px rgba(0,0,0,.45),
+        0 4px 12px rgba(0,0,0,.35),
+        inset 0 1px 0 rgba(255,255,255,.08);
     }
 
-    @media (max-width: 760px){
-      .wrap{padding:14px}
+    label{
+      display:block;
+      margin-bottom:7px;
+      color:var(--muted);
+      font-size:13px;
+      font-weight:500;
+      letter-spacing:0.2px;
+    }
+    input,select,textarea{
+      width:100%;
+      padding:12px 14px;
+      border-radius:14px;
+      border:1.5px solid var(--border);
+      background: var(--card2);
+      color:var(--text);
+      outline:none;
+      font-size:15px;
+      transition: all .25s ease;
+    }
+    input:focus,select:focus,textarea:focus{
+      border-color: var(--brand);
+      box-shadow: 0 0 0 4px var(--brand-glow);
+      background: rgba(15,23,42,0.8);
+    }
+    input::placeholder{color:var(--muted-dark)}
+
+    button{
+      padding:11px 16px;
+      border-radius:14px;
+      border:1.5px solid var(--border);
+      background: rgba(125,211,252,.1);
+      color:var(--text);
+      cursor:pointer;
+      font-size:14px;
+      font-weight:500;
+      transition: all .2s ease;
+      white-space:nowrap;
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+    }
+    button:hover:not(:disabled){
+      background: rgba(125,211,252,.18);
+      border-color: var(--brand);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(125,211,252,.2);
+    }
+    button:active:not(:disabled){transform: translateY(0)}
+    button:disabled{opacity:.5;cursor:not-allowed}
+
+    .btn-primary{
+      background: linear-gradient(135deg, rgba(125,211,252,.25) 0%, rgba(129,140,248,.2) 100%);
+      border-color: rgba(125,211,252,.4);
+      font-weight:600;
+    }
+    .btn-primary:hover:not(:disabled){
+      background: linear-gradient(135deg, rgba(125,211,252,.35) 0%, rgba(129,140,248,.3) 100%);
+      border-color: var(--brand);
+      box-shadow: 0 4px 16px rgba(125,211,252,.3);
+    }
+
+    .btn-ghost{
+      background: rgba(255,255,255,.04);
+      border-color: rgba(255,255,255,.08);
+    }
+    .btn-ghost:hover:not(:disabled){
+      background: rgba(255,255,255,.08);
+      border-color: rgba(255,255,255,.12);
+    }
+
+    .danger{
+      background: rgba(239,68,68,.12);
+      border-color: rgba(239,68,68,.4);
+      color:var(--text);
+    }
+    .danger:hover:not(:disabled){
+      background: rgba(239,68,68,.18);
+      border-color: var(--danger);
+      box-shadow: 0 4px 12px rgba(239,68,68,.2);
+    }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:6px 12px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.04);
+      color:var(--muted);
+      font-size:12.5px;
+      font-weight:500;
+      white-space:nowrap;
+    }
+    .badge{
+      display:inline-block;
+      padding:4px 10px;
+      border-radius:8px;
+      font-size:11px;
+      font-weight:600;
+      letter-spacing:0.3px;
+      text-transform:uppercase;
+    }
+
+    .muted{color:var(--muted)}
+    .muted-dark{color:var(--muted-dark)}
+
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+    .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+
+    .split{
+      display:grid;
+      grid-template-columns: 1fr 1.5fr;
+      gap:20px;
+      align-items:start;
+    }
+
+    .listItem{
+      padding:14px 16px;
+      border-bottom:1px solid var(--border);
+      background:transparent;
+      border-radius:12px;
+      margin-bottom:4px;
+      transition: all .2s ease;
+    }
+    .listItem:hover{
+      background:var(--card-hover);
+      border-color:var(--border-light);
+      transform:translateX(4px);
+    }
+    .listItem:last-child{border-bottom:0}
+
+    .emailItem{
+      padding:16px;
+      border:1.5px solid var(--border);
+      background:linear-gradient(145deg, rgba(255,255,255,.03), transparent);
+      border-radius:16px;
+      margin-bottom:10px;
+      cursor:pointer;
+      transition: all .25s ease;
+      position:relative;
+      overflow:hidden;
+    }
+    .emailItem::before{
+      content:'';
+      position:absolute;
+      left:0;
+      top:0;
+      bottom:0;
+      width:4px;
+      background:linear-gradient(180deg, var(--brand), var(--accent));
+      opacity:0;
+      transition:opacity .25s;
+    }
+    .emailItem:hover{
+      border-color:var(--brand);
+      background:linear-gradient(145deg, rgba(125,211,252,.08), rgba(129,140,248,.05));
+      transform:translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0,0,0,.3), 0 0 0 1px rgba(125,211,252,.1);
+    }
+    .emailItem:hover::before{opacity:1}
+
+    .emailHeader{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:12px;
+      margin-bottom:8px;
+    }
+    .emailSubject{
+      font-size:15px;
+      font-weight:600;
+      color:var(--text-bright);
+      line-height:1.4;
+      flex:1;
+    }
+    .emailMeta{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      font-size:13px;
+      color:var(--muted);
+      margin-bottom:10px;
+    }
+    .emailFrom{
+      font-weight:500;
+      color:var(--brand);
+    }
+    .emailDate{
+      color:var(--muted-dark);
+      font-size:12px;
+    }
+    .emailActions{
+      display:flex;
+      gap:8px;
+      margin-top:12px;
+      flex-wrap:wrap;
+    }
+
+    .aliasItem{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      padding:12px 14px;
+      border:1.5px solid var(--border);
+      background:rgba(255,255,255,.02);
+      border-radius:14px;
+      margin-bottom:8px;
+      transition:all .2s ease;
+    }
+    .aliasItem:hover{
+      border-color:var(--brand);
+      background:rgba(125,211,252,.06);
+      transform:translateX(3px);
+    }
+    .aliasAddr{
+      font-family: ui-monospace, 'SF Mono', Monaco, 'Cascadia Code', monospace;
+      font-size:14px;
+      color:var(--text-bright);
+      font-weight:500;
+    }
+
+    .emailViewer{
+      border-top:2px solid var(--border);
+      padding-top:20px;
+      margin-top:20px;
+    }
+    .emailViewerHeader{
+      margin-bottom:20px;
+      padding-bottom:16px;
+      border-bottom:1px solid var(--border);
+    }
+    .emailViewerSubject{
+      font-size:22px;
+      font-weight:700;
+      color:var(--text-bright);
+      margin-bottom:12px;
+      line-height:1.3;
+    }
+    .emailViewerMeta{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      font-size:14px;
+    }
+    .emailViewerMeta > div{
+      display:flex;
+      gap:8px;
+      align-items:center;
+    }
+    .emailViewerMeta label{
+      display:inline;
+      min-width:60px;
+      color:var(--muted-dark);
+      margin:0;
+    }
+    .emailViewerMeta span{color:var(--text)}
+    .emailViewerBody{
+      background:var(--card2);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:20px;
+      margin-top:16px;
+      line-height:1.7;
+      font-size:15px;
+    }
+    .emailViewerBody iframe{
+      width:100%;
+      height:70vh;
+      border:0;
+      border-radius:12px;
+      background:white;
+    }
+
+    .kbd{
+      font-family: ui-monospace, 'SF Mono', Monaco, monospace;
+      font-size: 12.5px;
+      padding:3px 9px;
+      border-radius:8px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.04);
+      color: var(--muted);
+      font-weight:500;
+    }
+
+    .hr{
+      border:0;
+      border-top:1px solid var(--border);
+      margin:16px 0;
+      opacity:0.8;
+    }
+
+    .emptyState{
+      text-align:center;
+      padding:40px 20px;
+      color:var(--muted);
+    }
+    .emptyState svg{
+      width:64px;
+      height:64px;
+      opacity:0.4;
+      margin-bottom:16px;
+    }
+
+    @keyframes spin{
+      to{transform:rotate(360deg)}
+    }
+    .spinner{
+      display:inline-block;
+      width:14px;
+      height:14px;
+      border:2px solid rgba(255,255,255,.2);
+      border-top-color:var(--brand);
+      border-radius:50%;
+      animation:spin .6s linear infinite;
+    }
+
+    @keyframes fadeIn{
+      from{opacity:0;transform:translateY(10px)}
+      to{opacity:1;transform:translateY(0)}
+    }
+    .card{animation:fadeIn .4s ease-out}
+
+    pre{white-space:pre-wrap;word-break:break-word}
+
+    @media (max-width: 900px){
+      .wrap{padding:16px}
       .hdr{flex-direction:column;align-items:flex-start}
-      .row,.row3,.split{grid-template-columns:1fr}
+      .split{grid-template-columns:1fr}
+      .row,.row3{grid-template-columns:1fr}
+      .card{padding:16px}
+    }
+
+    @media (max-width: 640px){
+      .wrap{padding:12px}
+      .card{padding:14px;border-radius:16px}
+      .emailItem{padding:12px}
+      .emailSubject{font-size:14px}
+      .brandName{font-size:16px}
     }
   </style>
 </head>
@@ -404,7 +682,7 @@ function pageTemplate(title, body, extraHead = "") {
 </html>`;
 }
 
-// -------------------- Pages --------------------
+// Pages
 const PAGES = {
   login() {
     return pageTemplate(
@@ -609,24 +887,42 @@ const PAGES = {
         badge: "Inbox",
         subtitle: "Kelola alias & baca email masuk",
         rightHtml: `
-          <a href="/admin" id="adminLink" class="pill" style="display:none">Admin</a>
-          <button class="danger" onclick="logout()">Logout</button>
+          <a href="/admin" id="adminLink" class="pill" style="display:none">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+            Admin
+          </a>
+          <button class="danger" onclick="logout()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
+            </svg>
+            Logout
+          </button>
         `,
       })}
 
       <div class="card">
         <div class="row">
           <div>
-            <div class="muted">Akun</div>
-            <div id="me">...</div>
+            <label>👤 Akun Anda</label>
+            <div id="me" style="margin-top:8px">
+              <div class="spinner"></div>
+              <span class="muted" style="margin-left:8px">Loading...</span>
+            </div>
           </div>
           <div>
-            <div class="muted">Buat alias baru (<b>@${domain}</b>)</div>
-            <div class="row" style="grid-template-columns:1fr auto;gap:10px;margin-top:8px">
-              <input id="alias" placeholder="contoh: sipar" />
-              <button class="btn-primary" onclick="createAlias()">Create</button>
+            <label>✉️ Buat Alias Baru (<b>@${domain}</b>)</label>
+            <div style="display:grid;grid-template-columns:1fr auto;gap:10px;margin-top:8px">
+              <input id="alias" placeholder="contoh: myname" />
+              <button class="btn-primary" onclick="createAlias()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Create
+              </button>
             </div>
-            <div id="aliasMsg" class="muted" style="margin-top:8px"></div>
+            <div id="aliasMsg" class="muted" style="margin-top:8px;font-size:13px"></div>
           </div>
         </div>
       </div>
@@ -634,20 +930,34 @@ const PAGES = {
       <div class="card">
         <div class="split">
           <div>
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-              <b>Aliases</b>
-              <span class="muted" id="limitInfo"></span>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+              <div>
+                <b style="font-size:16px">📬 Your Aliases</b>
+                <div class="muted" style="font-size:12px;margin-top:2px">
+                  <span id="limitInfo">limit: —</span>
+                </div>
+              </div>
             </div>
-            <div id="aliases" style="margin-top:6px"></div>
+            <div id="aliases"></div>
           </div>
 
           <div>
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-              <b>Emails</b>
-              <button class="btn-ghost" onclick="loadEmails()" id="refreshBtn" disabled>Refresh</button>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+              <div>
+                <b style="font-size:16px">📧 Inbox</b>
+                <div class="muted" id="selAlias" style="font-size:12px;margin-top:2px">
+                  Pilih alias untuk melihat email
+                </div>
+              </div>
+              <button class="btn-ghost" onclick="loadEmails()" id="refreshBtn" disabled style="gap:4px">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                </svg>
+                Refresh
+              </button>
             </div>
-            <div class="muted" id="selAlias" style="margin-top:6px">Pilih alias…</div>
-            <div id="emails" style="margin-top:6px"></div>
+            <div id="emails"></div>
           </div>
         </div>
       </div>
@@ -658,7 +968,7 @@ const PAGES = {
         let ME=null;
         let SELECTED=null;
 
-        function esc(s){return (s||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));}
+        function esc(s){return (s||'').replace(/[&<>\"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 
         async function api(path, opts){
           const r = await fetch(path, opts);
@@ -675,9 +985,11 @@ const PAGES = {
           if(!j.ok){ location.href='/login'; return; }
           ME=j.user;
           document.getElementById('me').innerHTML =
-            '<div><b>'+esc(ME.username)+'</b> <span class="muted">('+esc(ME.email)+')</span></div>'+
-            '<div class="muted">role: '+esc(ME.role)+'</div>';
-          document.getElementById('limitInfo').textContent = 'limit: '+ME.alias_limit;
+            '<div style="font-size:15px"><b>'+esc(ME.username)+'</b></div>'+
+            '<div class="muted-dark" style="font-size:13px;margin-top:2px">'+esc(ME.email)+'</div>'+
+            '<div style="margin-top:8px"><span class="badge" style="background:rgba(129,140,248,.15);border:1px solid rgba(129,140,248,.3);color:var(--accent)">'+esc(ME.role)+'</span></div>';
+
+          document.getElementById('limitInfo').innerHTML = 'limit: <b>'+ME.alias_limit+'</b>';
           if(ME.role==='admin') document.getElementById('adminLink').style.display='inline-flex';
         }
 
@@ -686,29 +998,52 @@ const PAGES = {
           if(!j.ok){ alert(j.error||'gagal'); return; }
           const box = document.getElementById('aliases');
           box.innerHTML='';
+
           if(j.aliases.length===0){
-            box.innerHTML='<div class="muted">Belum ada alias.</div>';
+            box.innerHTML=\`
+              <div class="emptyState">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                <div>Belum ada alias.</div>
+                <div style="font-size:12px;margin-top:4px">Buat alias pertama Anda!</div>
+              </div>
+            \`;
             return;
           }
+
           for(const a of j.aliases){
             const div=document.createElement('div');
-            div.className='listItem';
+            div.className='aliasItem';
             const addr = a.local_part+'@${domain}';
             div.innerHTML =
-              '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
-                '<button class="btn-primary" onclick="selectAlias(\\''+a.local_part+'\\')">Open</button>'+
-                '<span>'+esc(addr)+'</span>'+
-                (a.disabled?'<span class="pill">disabled</span>':'')+
+              '<div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">'+
+                '<button class="btn-primary" onclick="selectAlias(\''+esc(a.local_part)+'\')" style="flex-shrink:0">'+
+                  '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">'+
+                    '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>'+
+                    '<polyline points="22,6 12,13 2,6"/>'+
+                  '</svg>'+
+                  'Open'+
+                '</button>'+
+                '<span class="aliasAddr" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">'+esc(addr)+'</span>'+
+                (a.disabled?'<span class="badge" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:var(--danger)">disabled</span>':'')+
               '</div>'+
-              '<div><button onclick="delAlias(\\''+a.local_part+'\\')" class="danger">Delete</button></div>';
+              '<button onclick="delAlias(\''+esc(a.local_part)+'\')" class="danger" style="flex-shrink:0">'+
+                '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">'+
+                  '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>'+
+                '</svg>'+
+                'Delete'+
+              '</button>';
             box.appendChild(div);
           }
         }
 
         async function selectAlias(local){
           SELECTED=local;
-          document.getElementById('selAlias').textContent = 'Alias: '+local+'@${domain}';
+          document.getElementById('selAlias').innerHTML = '<b>'+local+'@${domain}</b>';
           document.getElementById('refreshBtn').disabled=false;
+          document.getElementById('emails').innerHTML='<div class="spinner"></div><span class="muted" style="margin-left:8px">Loading emails...</span>';
           await loadEmails();
         }
 
@@ -718,21 +1053,53 @@ const PAGES = {
           if(!j.ok){ alert(j.error||'gagal'); return; }
           const box=document.getElementById('emails');
           box.innerHTML='';
+
           if(j.emails.length===0){
-            box.innerHTML='<div class="muted">Belum ada email masuk.</div>';
+            box.innerHTML=\`
+              <div class="emptyState">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                  <polyline points="22,6 12,13 2,6"/>
+                </svg>
+                <div>Inbox kosong</div>
+                <div style="font-size:12px;margin-top:4px">Belum ada email masuk ke alias ini</div>
+              </div>
+            \`;
             return;
           }
+
           for(const m of j.emails){
             const d=document.createElement('div');
-            d.style.padding='10px 0';
-            d.style.borderBottom='1px solid rgba(34,49,74,.95)';
+            d.className='emailItem';
+            d.onclick=()=>openEmail(m.id);
+
+            const subject = esc(m.subject||'(no subject)');
+            const from = esc(m.from_addr);
+            const date = esc(m.date||'');
+
             d.innerHTML =
-              '<div><b>'+esc(m.subject||'(no subject)')+'</b></div>'+
-              '<div class="muted">From: '+esc(m.from_addr)+'</div>'+
-              '<div class="muted">'+esc(m.date||'')+'</div>'+
-              '<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">'+
-                '<button class="btn-primary" onclick="openEmail(\\''+m.id+'\\')">View</button>'+
-                '<button onclick="delEmail(\\''+m.id+'\\')" class="danger">Delete</button>'+
+              '<div class="emailHeader">'+
+                '<div class="emailSubject">'+subject+'</div>'+
+              '</div>'+
+              '<div class="emailMeta">'+
+                '<span class="emailFrom">'+from+'</span>'+
+                '<span style="color:var(--border)">•</span>'+
+                '<span class="emailDate">'+date+'</span>'+
+              '</div>'+
+              '<div class="emailActions" onclick="event.stopPropagation()">'+
+                '<button class="btn-primary" onclick="openEmail(\''+m.id+'\')">'+
+                  '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">'+
+                    '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>'+
+                    '<circle cx="12" cy="12" r="3"/>'+
+                  '</svg>'+
+                  'View'+
+                '</button>'+
+                '<button onclick="delEmail(\''+m.id+'\')" class="danger">'+
+                  '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">'+
+                    '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>'+
+                  '</svg>'+
+                  'Delete'+
+                '</button>'+
               '</div>';
             box.appendChild(d);
           }
@@ -744,71 +1111,93 @@ const PAGES = {
 
           const v=document.getElementById('emailView');
           v.style.display='block';
+
           v.innerHTML =
-            '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">'+
-              '<b>'+esc(j.email.subject||'(no subject)')+'</b>'+
-              '<button class="btn-ghost" onclick="document.getElementById(\\'emailView\\').style.display=\\'none\\'">Close</button>'+
-            '</div>'+
-            '<div class="muted" style="margin-top:6px">From: '+esc(j.email.from_addr)+'</div>'+
-            '<div class="muted">To: '+esc(j.email.to_addr)+'</div>'+
-            '<div class="muted">'+esc(j.email.date||'')+'</div>'+
-            '<hr class="hr" />'+
-            '<div id="msgBody"></div>';
+            '<div class="emailViewer">'+
+              '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">'+
+                '<h2 style="font-size:18px;color:var(--brand);margin:0">📧 Email Details</h2>'+
+                '<button class="btn-ghost" onclick="document.getElementById(\'emailView\').style.display=\'none\'">'+
+                  '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">'+
+                    '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'+
+                  '</svg>'+
+                  'Close'+
+                '</button>'+
+              '</div>'+
+              '<div class="emailViewerHeader">'+
+                '<div class="emailViewerSubject">'+esc(j.email.subject||'(no subject)')+'</div>'+
+                '<div class="emailViewerMeta">'+
+                  '<div><label>From:</label><span>'+esc(j.email.from_addr)+'</span></div>'+
+                  '<div><label>To:</label><span>'+esc(j.email.to_addr)+'</span></div>'+
+                  '<div><label>Date:</label><span>'+esc(j.email.date||'')+'</span></div>'+
+                '</div>'+
+              '</div>'+
+              '<div id="msgBody"></div>'+
+            '</div>';
 
           const body = document.getElementById('msgBody');
 
           if (j.email.html) {
-            // Render HTML safely in sandboxed iframe (lebih aman dari XSS)
             const iframe = document.createElement('iframe');
-            iframe.setAttribute('sandbox',''); // no scripts
+            iframe.setAttribute('sandbox','');
             iframe.setAttribute('referrerpolicy','no-referrer');
-            iframe.style.width = '100%';
-            iframe.style.height = '65vh';
-            iframe.style.border = '1px solid rgba(34,49,74,.95)';
-            iframe.style.borderRadius = '12px';
-            iframe.style.background = 'var(--card2)';
+            iframe.className='emailViewerBody';
             iframe.srcdoc = j.email.html;
-            body.appendChild(iframe);
+
+            const wrapper = document.createElement('div');
+            wrapper.appendChild(iframe);
 
             const note = document.createElement('div');
-            note.className = 'muted';
-            note.style.marginTop = '8px';
-            note.textContent = 'HTML ditampilkan dalam iframe sandbox.';
-            body.appendChild(note);
+            note.className = 'muted-dark';
+            note.style.cssText = 'margin-top:12px;font-size:12px;text-align:center';
+            note.innerHTML = '🔒 HTML displayed in sandboxed iframe (safe from XSS)';
+            wrapper.appendChild(note);
+
+            body.appendChild(wrapper);
           } else {
             const pre = document.createElement('pre');
-            pre.style.whiteSpace = 'pre-wrap';
-            pre.textContent = j.email.text || '';
+            pre.className = 'emailViewerBody';
+            pre.style.cssText = 'white-space:pre-wrap;word-break:break-word;font-family:inherit';
+            pre.textContent = j.email.text || '(empty)';
             body.appendChild(pre);
           }
 
-          v.scrollIntoView({behavior:'smooth'});
+          v.scrollIntoView({behavior:'smooth',block:'start'});
         }
 
         async function createAlias(){
           const local = document.getElementById('alias').value.trim().toLowerCase();
           const msg=document.getElementById('aliasMsg');
-          msg.textContent='...';
-          const j = await api('/api/aliases', {
-            method:'POST',
-            headers:{'content-type':'application/json'},
-            body:JSON.stringify({local})
-          });
-          msg.textContent = j.ok ? 'Alias dibuat.' : (j.error||'gagal');
-          if(j.ok){
-            document.getElementById('alias').value='';
-            await loadMe();
-            await loadAliases();
+          msg.innerHTML='<span class="spinner"></span> Creating...';
+
+          try{
+            const j = await api('/api/aliases', {
+              method:'POST',
+              headers:{'content-type':'application/json'},
+              body:JSON.stringify({local})
+            });
+
+            if(j.ok){
+              msg.innerHTML='✅ Alias created successfully!';
+              document.getElementById('alias').value='';
+              await loadMe();
+              await loadAliases();
+              setTimeout(()=>msg.innerHTML='',3000);
+            }else{
+              msg.innerHTML='❌ '+(j.error||'Failed to create alias');
+            }
+          }catch(e){
+            msg.innerHTML='❌ '+e.message;
           }
         }
 
         async function delAlias(local){
-          if(!confirm('Hapus alias '+local+'@${domain} ?')) return;
+          if(!confirm('Delete alias '+local+'@${domain}?')) return;
           const j = await api('/api/aliases/'+encodeURIComponent(local), {method:'DELETE'});
           if(!j.ok){ alert(j.error||'gagal'); return; }
+
           if(SELECTED===local){
             SELECTED=null;
-            document.getElementById('selAlias').textContent='Pilih alias…';
+            document.getElementById('selAlias').textContent='Pilih alias untuk melihat email';
             document.getElementById('emails').innerHTML='';
             document.getElementById('refreshBtn').disabled=true;
           }
@@ -818,7 +1207,7 @@ const PAGES = {
         }
 
         async function delEmail(id){
-          if(!confirm('Hapus email ini?')) return;
+          if(!confirm('Delete this email?')) return;
           const j = await api('/api/emails/'+encodeURIComponent(id), {method:'DELETE'});
           if(!j.ok){ alert(j.error||'gagal'); return; }
           document.getElementById('emailView').style.display='none';
@@ -863,7 +1252,7 @@ const PAGES = {
       </div>
 
       <script>
-        function esc(s){return (s||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));}
+        function esc(s){return (s||'').replace(/[&<>\"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 
         async function api(path, opts){
           const r = await fetch(path, opts);
@@ -898,8 +1287,8 @@ const PAGES = {
               '</div>'+
               '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
                 '<input id="lim_'+esc(u.id)+'" value="'+u.alias_limit+'" style="width:120px" />'+
-                '<button class="btn-primary" onclick="setLimit(\\''+esc(u.id)+'\\')">Set limit</button>'+
-                '<button onclick="toggleUser(\\''+esc(u.id)+'\\','+(u.disabled?0:1)+')" class="danger">'+(u.disabled?'Enable':'Disable')+'</button>'+
+                '<button class="btn-primary" onclick="setLimit(\''+esc(u.id)+'\')">Set limit</button>'+
+                '<button onclick="toggleUser(\''+esc(u.id)+'\','+(u.disabled?0:1)+')" class="danger">'+(u.disabled?'Enable':'Disable')+'</button>'+
               '</div>';
             box.appendChild(div);
           }
@@ -939,7 +1328,7 @@ const PAGES = {
   },
 };
 
-// -------------------- Auth/session helpers --------------------
+// Auth/session helpers
 async function getUserBySession(request, env) {
   const token = getCookie(request, "session");
   if (!token) return null;
@@ -1001,7 +1390,7 @@ async function cleanupExpired(env) {
   }
 }
 
-// -------------------- Reset email (optional Resend) --------------------
+// Reset email (optional Resend)
 async function sendResetEmail(env, toEmail, token) {
   if (!env.RESEND_API_KEY) return;
 
@@ -1040,14 +1429,14 @@ async function sendResetEmail(env, toEmail, token) {
   }
 }
 
-// -------------------- Worker entry --------------------
+// Worker entry
 export default {
   async fetch(request, env, ctx) {
     ctx.waitUntil(cleanupExpired(env));
 
     const url = new URL(request.url);
     const path = url.pathname;
-    const cookieSecure = url.protocol === "https:"; // dev-friendly
+    const cookieSecure = url.protocol === "https:";
 
     // Pages
     if (request.method === "GET") {
@@ -1058,7 +1447,7 @@ export default {
       if (path === "/admin") return html(PAGES.admin(env.DOMAIN));
     }
 
-    // API (dibungkus try/catch supaya gak pernah return HTML error -> "bad json")
+    // API
     if (path.startsWith("/api/")) {
       try {
         // Auth
@@ -1085,7 +1474,6 @@ export default {
           const t = nowSec();
           const id = crypto.randomUUID();
 
-          // first user becomes admin
           const c = await env.DB.prepare(`SELECT COUNT(*) as c FROM users`).first();
           const count = Number(c?.c ?? 0);
           const role = count === 0 ? "admin" : "user";
@@ -1130,46 +1518,24 @@ export default {
           const body = await readJson(request);
           if (!body) return badRequest("JSON required");
 
-          const id = String(body.id || "").trim().toLowerCase(); // username or email
+          const id = String(body.id || "").trim().toLowerCase();
           const pw = String(body.pw || "");
 
           if (!id || !pw) return badRequest("Lengkapi data");
 
           const hasIters = await usersHasPassIters(env);
+          let query = `SELECT id, username, email, pass_salt, pass_hash, role, alias_limit, disabled FROM users WHERE username = ? OR email = ?`;
+          if (hasIters) {
+            query = `SELECT id, username, email, pass_salt, pass_hash, pass_iters, role, alias_limit, disabled FROM users WHERE username = ? OR email = ?`;
+          }
 
-          const user = hasIters
-            ? await env.DB.prepare(
-                `SELECT id, username, email, pass_salt, pass_hash, pass_iters, role, alias_limit, disabled
-                 FROM users WHERE username = ? OR email = ?`
-              ).bind(id, id).first()
-            : await env.DB.prepare(
-                `SELECT id, username, email, pass_salt, pass_hash, role, alias_limit, disabled
-                 FROM users WHERE username = ? OR email = ?`
-              ).bind(id, id).first();
+          const user = await env.DB.prepare(query).bind(id, id).first();
 
           if (!user || user.disabled) return unauthorized("Login gagal");
 
           const saltBytes = base64UrlToBytes(user.pass_salt);
-
-          // If per-user iters exists, use it. Else rely on env (must be consistent).
-          const iters = hasIters ? safeInt(user.pass_iters, pbkdf2Iters(env)) : pbkdf2Iters(env);
-
-          if (iters > PBKDF2_MAX_ITERS) {
-            // This user cannot be verified on Workers WebCrypto.
-            return unauthorized("Hash password lama tidak didukung. Silakan reset password.");
-          }
-
-          let hash;
-          try {
-            hash = await pbkdf2HashBase64Url(pw, saltBytes, iters);
-          } catch (e) {
-            const name = e?.name || "";
-            if (name === "NotSupportedError") {
-              return unauthorized("Parameter hash tidak didukung. Silakan reset password.");
-            }
-            throw e;
-          }
-
+          const userIters = user.pass_iters ? Number(user.pass_iters) : pbkdf2Iters(env);
+          const hash = await pbkdf2HashBase64Url(pw, saltBytes, userIters);
           if (hash !== user.pass_hash) return unauthorized("Login gagal");
 
           const ttl = safeInt(env.SESSION_TTL_SECONDS, 1209600);
@@ -1204,7 +1570,6 @@ export default {
             .bind(email)
             .first();
 
-          // Selalu balas ok (anti user-enumeration)
           if (!user || user.disabled) return json({ ok: true });
 
           const tokenBytes = crypto.getRandomValues(new Uint8Array(32));
@@ -1302,14 +1667,13 @@ export default {
           const local = String(body.local || "").trim().toLowerCase();
           if (!validLocalPart(local)) return badRequest("Alias tidak valid (a-z0-9._+- max 64)");
 
-          // enforce limit
           const cnt = await env.DB.prepare(
             `SELECT COUNT(*) as c FROM aliases WHERE user_id = ? AND disabled = 0`
           )
             .bind(me.id)
             .first();
 
-          if ((Number(cnt?.c ?? 0)) >= me.alias_limit) return forbidden("Limit alias tercapai");
+          if ((cnt?.c || 0) >= me.alias_limit) return forbidden("Limit alias tercapai");
 
           const t = nowSec();
           try {
@@ -1322,7 +1686,6 @@ export default {
           } catch (e) {
             const msg = String(e && e.message ? e.message : e);
             if (msg.toUpperCase().includes("UNIQUE")) return badRequest("Alias sudah dipakai");
-            console.log("alias db error:", msg);
             return json({ ok: false, error: "DB error" }, 500);
           }
 
@@ -1353,7 +1716,6 @@ export default {
           const alias = (url.searchParams.get("alias") || "").trim().toLowerCase();
           if (!alias || !validLocalPart(alias)) return badRequest("alias required");
 
-          // check ownership
           const own = await env.DB.prepare(
             `SELECT local_part FROM aliases WHERE local_part = ? AND user_id = ? AND disabled = 0`
           )
@@ -1384,6 +1746,7 @@ export default {
             .first();
 
           if (!row) return notFound();
+
           return json({ ok: true, email: row });
         }
 
@@ -1416,9 +1779,9 @@ export default {
              FROM users ORDER BY created_at DESC LIMIT 200`
           ).all();
 
-          const users = (rows.results || []).map((u) => ({
+          const users = (rows.results || []).map(u => ({
             ...u,
-            created_at: new Date(u.created_at * 1000).toISOString(),
+            created_at: new Date(u.created_at * 1000).toISOString()
           }));
 
           return json({ ok: true, users });
@@ -1430,15 +1793,10 @@ export default {
           const body = await readJson(request);
           if (!body) return badRequest("JSON required");
 
-          const alias_limit =
-            body.alias_limit !== undefined ? safeInt(body.alias_limit, NaN) : undefined;
-          const disabled =
-            body.disabled !== undefined ? safeInt(body.disabled, NaN) : undefined;
+          const alias_limit = body.alias_limit !== undefined ? safeInt(body.alias_limit, NaN) : undefined;
+          const disabled = body.disabled !== undefined ? safeInt(body.disabled, NaN) : undefined;
 
-          if (
-            alias_limit !== undefined &&
-            (!Number.isFinite(alias_limit) || alias_limit < 0 || alias_limit > 1000)
-          ) {
+          if (alias_limit !== undefined && (!Number.isFinite(alias_limit) || alias_limit < 0 || alias_limit > 1000)) {
             return badRequest("alias_limit invalid");
           }
           if (disabled !== undefined && !(disabled === 0 || disabled === 1)) {
@@ -1447,14 +1805,8 @@ export default {
 
           const sets = [];
           const binds = [];
-          if (alias_limit !== undefined) {
-            sets.push("alias_limit = ?");
-            binds.push(alias_limit);
-          }
-          if (disabled !== undefined) {
-            sets.push("disabled = ?");
-            binds.push(disabled);
-          }
+          if (alias_limit !== undefined) { sets.push("alias_limit = ?"); binds.push(alias_limit); }
+          if (disabled !== undefined) { sets.push("disabled = ?"); binds.push(disabled); }
           if (sets.length === 0) return badRequest("No fields");
 
           binds.push(userId);
@@ -1467,9 +1819,9 @@ export default {
         }
 
         return notFound();
-      } catch (e) {
-        console.log("API ERROR:", e && e.stack ? e.stack : e);
-        return json({ ok: false, error: "Server error" }, 500);
+      } catch (err) {
+        console.log("api error:", err?.message || String(err));
+        return json({ ok: false, error: String(err && err.message ? err.message : err) }, 500);
       }
     }
 
@@ -1487,7 +1839,6 @@ export default {
         return;
       }
 
-      // Lookup alias + user
       const row = await env.DB.prepare(
         `SELECT a.local_part as local_part, a.user_id as user_id, a.disabled as alias_disabled,
                 u.disabled as user_disabled
@@ -1509,10 +1860,9 @@ export default {
         return;
       }
 
+      const parser = new PostalMime.default();
       const rawEmail = new Response(message.raw);
       const ab = await rawEmail.arrayBuffer();
-
-      const parser = new PostalMime();
       const parsed = await parser.parse(ab);
 
       const id = crypto.randomUUID();
@@ -1520,8 +1870,7 @@ export default {
 
       const subject = parsed.subject || "";
       const date = parsed.date ? new Date(parsed.date).toISOString() : "";
-      const fromAddr =
-        (parsed.from && parsed.from.address) ? parsed.from.address : (message.from || "");
+      const fromAddr = (parsed.from && parsed.from.address) ? parsed.from.address : (message.from || "");
       const toAddr = message.to || "";
 
       const maxTextChars = safeInt(env.MAX_TEXT_CHARS, 200000);
@@ -1558,8 +1907,9 @@ export default {
           t
         )
         .run();
+
     } catch (e) {
-      console.log("email handler error:", e && e.stack ? e.stack : e);
+      console.log("email handler error:", e && e.message ? e.message : e);
       message.setReject("Temporary processing error");
     }
   },
