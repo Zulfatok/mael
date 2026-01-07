@@ -5,7 +5,7 @@ import PostalMime from "postal-mime";
  * Cloudflare Email Routing + Email Worker + Web Inbox
  * Features:
  * - Signup/Login/Logout
- * - Reset password (optional via Resend)
+ * - Reset password via Resend (optional; but recommended)
  * - Mail (alias) management with per-user limit
  * - Admin dashboard: list users, set mail limit, disable user
  * - Email handler: accept via catch-all, store if mail registered else reject
@@ -15,9 +15,8 @@ const encoder = new TextEncoder();
 
 // -------------------- Security/Hashing constants --------------------
 const PBKDF2_MAX_ITERS = 100000; // Cloudflare Workers WebCrypto limit
-const PBKDF2_MIN_ITERS = 10000; // sensible floor
+const PBKDF2_MIN_ITERS = 10000;  // sensible floor
 
-// Cache (per isolate) whether DB has users.pass_iters column
 let USERS_HAS_PASS_ITERS = null;
 
 // -------------------- Response helpers --------------------
@@ -47,18 +46,10 @@ function html(body, status = 200, headers = {}) {
   });
 }
 
-function badRequest(msg) {
-  return json({ ok: false, error: msg }, 400);
-}
-function unauthorized(msg = "Unauthorized") {
-  return json({ ok: false, error: msg }, 401);
-}
-function forbidden(msg = "Forbidden") {
-  return json({ ok: false, error: msg }, 403);
-}
-function notFound() {
-  return json({ ok: false, error: "Not found" }, 404);
-}
+function badRequest(msg) { return json({ ok: false, error: msg }, 400); }
+function unauthorized(msg = "Unauthorized") { return json({ ok: false, error: msg }, 401); }
+function forbidden(msg = "Forbidden") { return json({ ok: false, error: msg }, 403); }
+function notFound() { return json({ ok: false, error: "Not found" }, 404); }
 
 // -------------------- Utils --------------------
 function safeInt(v, fallback) {
@@ -76,7 +67,6 @@ function clampPbkdf2Iters(n) {
 }
 
 function pbkdf2Iters(env) {
-  // Workers WebCrypto max 100000, jadi kita clamp.
   return clampPbkdf2Iters(env.PBKDF2_ITERS ?? PBKDF2_MAX_ITERS);
 }
 
@@ -101,7 +91,6 @@ async function sha256Base64Url(inputBytes) {
 }
 
 async function pbkdf2HashBase64Url(password, saltBytes, iterations) {
-  // Fail-fast bila someone tries to pass > max
   const it = safeInt(iterations, 0);
   if (it > PBKDF2_MAX_ITERS) {
     const err = new Error(
@@ -120,12 +109,7 @@ async function pbkdf2HashBase64Url(password, saltBytes, iterations) {
   );
 
   const bits = await crypto.subtle.deriveBits(
-    {
-      name: "PBKDF2",
-      hash: "SHA-256",
-      salt: saltBytes,
-      iterations: it,
-    },
+    { name: "PBKDF2", hash: "SHA-256", salt: saltBytes, iterations: it },
     keyMaterial,
     256
   );
@@ -164,13 +148,11 @@ async function readJson(request) {
 }
 
 function validLocalPart(local) {
-  // local-part aman: huruf angka . _ + - (1..64)
   return /^[a-z0-9][a-z0-9._+-]{0,63}$/.test(local);
 }
 
 async function usersHasPassIters(env) {
   if (USERS_HAS_PASS_ITERS !== null) return USERS_HAS_PASS_ITERS;
-
   try {
     const res = await env.DB.prepare(`PRAGMA table_info(users)`).all();
     USERS_HAS_PASS_ITERS = (res.results || []).some((r) => r?.name === "pass_iters");
@@ -233,7 +215,7 @@ function pageTemplate(title, body, extraHead = "") {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>${title}</title>
-  <meta name="theme-color" content="#0b0f14">
+  <meta name="theme-color" content="#070a10">
   <link rel="icon" href="data:image/svg+xml,${FAVICON_DATA}">
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
@@ -252,13 +234,17 @@ function pageTemplate(title, body, extraHead = "") {
     :root{
       --bg0:#070a10;
       --bg1:#0a0f18;
-      --card:#0f172a;
-      --card2:#0b1220;
+
+      --card: rgba(15,23,42,.92);
+      --card2: rgba(11,18,32,.92);
       --border: rgba(39,55,86,.92);
+
       --text:#eef2ff;
       --muted:#b8c3d6;
+
       --brand:#60a5fa;
       --brand2:#818cf8;
+
       --danger:#ef4444;
 
       /* paper (buat baca email biar jelas) */
@@ -297,7 +283,7 @@ function pageTemplate(title, body, extraHead = "") {
     .card{
       background:
         linear-gradient(180deg, rgba(255,255,255,.04), transparent 40%),
-        rgba(15,23,42,.92);
+        var(--card);
       border:1px solid var(--border);
       border-radius:18px;
       padding:16px;
@@ -313,7 +299,7 @@ function pageTemplate(title, body, extraHead = "") {
       padding:12px 12px;
       border-radius:14px;
       border:1px solid var(--border);
-      background: rgba(11,18,32,.92);
+      background: var(--card2);
       color:var(--text);
       outline:none;
     }
@@ -343,9 +329,7 @@ function pageTemplate(title, body, extraHead = "") {
       background: linear-gradient(135deg, rgba(96,165,250,.28), rgba(129,140,248,.22));
       border-color: rgba(96,165,250,.38);
     }
-    .btn-ghost{
-      background: rgba(255,255,255,.04);
-    }
+    .btn-ghost{background: rgba(255,255,255,.04)}
     .danger{
       border-color: rgba(239,68,68,.50);
       background: rgba(239,68,68,.12);
@@ -384,6 +368,7 @@ function pageTemplate(title, body, extraHead = "") {
       flex-wrap:wrap;
     }
 
+    /* Inbox list */
     .mailItem{
       padding:12px 12px;
       border:1px solid var(--border);
@@ -391,15 +376,23 @@ function pageTemplate(title, body, extraHead = "") {
       background: rgba(255,255,255,.03);
       margin-bottom:10px;
     }
-    .mailSubject{font-weight:800}
+    .mailSubject{font-weight:900; font-size:14.5px}
     .mailMeta{color:var(--muted); font-size:12.5px; margin-top:4px; line-height:1.35}
-    .mailSnippet{color: rgba(238,242,255,.92); font-size:13px; margin-top:8px; white-space:pre-wrap}
+    .mailSnippet{
+      color: rgba(238,242,255,.92);
+      font-size: 13.5px;
+      margin-top:10px;
+      line-height:1.55;
+      white-space:pre-wrap;
+      word-break:break-word;
+    }
 
+    /* Viewer */
     .viewerHead{
       display:flex;
       justify-content:space-between;
       gap:10px;
-      align-items:center;
+      align-items:flex-start;
       flex-wrap:wrap;
     }
     .paper{
@@ -421,7 +414,8 @@ function pageTemplate(title, body, extraHead = "") {
       word-break:break-word;
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       font-size: 14px;
-      line-height: 1.6;
+      line-height: 1.65;
+      margin:0;
     }
 
     .hr{border:0;border-top:1px solid var(--border);margin:12px 0}
@@ -612,6 +606,18 @@ const PAGES = {
             return { ok:false, error: 'Server returned non-JSON ('+r.status+'). ' + (t ? t.slice(0,200) : '') };
           }
         }
+
+        // autofill token from #token=...
+        (function(){
+          try{
+            const h = location.hash || '';
+            const m = h.match(/token=([^&]+)/);
+            if(m && m[1]){
+              document.getElementById('t').value = decodeURIComponent(m[1]);
+            }
+          }catch{}
+        })();
+
         async function reqReset(){
           const email = document.getElementById('e').value.trim();
           const out = document.getElementById('out');
@@ -622,8 +628,9 @@ const PAGES = {
             body:JSON.stringify({email})
           });
           const j = await readJsonOrText(r);
-          out.textContent = j.ok ? 'Jika email terdaftar, token dikirim.' : (j.error || 'gagal');
+          out.textContent = j.ok ? 'Jika email terdaftar, token akan dikirim.' : (j.error || 'gagal');
         }
+
         async function confirmReset(){
           const token = document.getElementById('t').value.trim();
           const newPw = document.getElementById('npw').value;
@@ -701,13 +708,25 @@ const PAGES = {
 
         function esc(s){return (s||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));}
 
-        function fmtDate(s){
-          if(!s) return '';
+        function fmtDate(v){
+          if(v===null || v===undefined || v==='') return '';
           try{
-            const d = new Date(s);
-            if (Number.isNaN(d.getTime())) return String(s);
+            // handle seconds epoch
+            if(typeof v === 'number'){
+              const ms = v < 1000000000000 ? (v*1000) : v;
+              return new Date(ms).toLocaleString();
+            }
+            // if string numeric seconds
+            const s = String(v);
+            if(/^\d{9,13}$/.test(s)){
+              const n = Number(s);
+              const ms = n < 1000000000000 ? (n*1000) : n;
+              return new Date(ms).toLocaleString();
+            }
+            const d = new Date(v);
+            if (Number.isNaN(d.getTime())) return String(v);
             return d.toLocaleString();
-          }catch{ return String(s); }
+          }catch{ return String(v); }
         }
 
         async function api(path, opts){
@@ -789,16 +808,17 @@ const PAGES = {
         }
 
         function wrapEmailHtml(inner){
-          // Tujuan: bikin email HTML kebaca jelas (paper background) tanpa script
+          // bikin email HTML kebaca jelas: background putih + text gelap
           return '<!doctype html><html><head><meta charset="utf-8">'+
             '<meta name="viewport" content="width=device-width,initial-scale=1">'+
             '<style>'+
-              'html,body{margin:0;padding:0;background:${"${"}"paper"};color:${"${"}"paperText"};font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}' +
+              'html,body{margin:0;padding:0;background:#f8fafc;color:#0f172a;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}' +
               'body{padding:16px;line-height:1.55;font-size:14px;}' +
               'img{max-width:100%;height:auto;}' +
               'table{max-width:100%;border-collapse:collapse;}' +
               'a{color:#2563eb;}' +
               'pre{white-space:pre-wrap;word-break:break-word;}' +
+              'blockquote{margin:0;padding-left:12px;border-left:3px solid rgba(15,23,42,.2);color:rgba(15,23,42,.85)}' +
             '</style></head><body>'+ (inner || '') +'</body></html>';
         }
 
@@ -1021,7 +1041,6 @@ async function getUserBySession(request, env) {
 
   if (!row) return null;
   if (row.disabled) return null;
-
   return row;
 }
 
@@ -1051,21 +1070,16 @@ async function destroySession(request, env) {
 
 async function cleanupExpired(env) {
   const t = nowSec();
-  try {
-    await env.DB.prepare(`DELETE FROM sessions WHERE expires_at <= ?`).bind(t).run();
-  } catch (e) {
-    console.log("cleanup sessions error:", e?.message || String(e));
-  }
-  try {
-    await env.DB.prepare(`DELETE FROM reset_tokens WHERE expires_at <= ?`).bind(t).run();
-  } catch (e) {
-    console.log("cleanup reset_tokens error:", e?.message || String(e));
-  }
+  try { await env.DB.prepare(`DELETE FROM sessions WHERE expires_at <= ?`).bind(t).run(); } catch {}
+  try { await env.DB.prepare(`DELETE FROM reset_tokens WHERE expires_at <= ?`).bind(t).run(); } catch {}
 }
 
-// -------------------- Reset email (optional Resend) --------------------
+// -------------------- Reset email (Resend) --------------------
 async function sendResetEmail(env, toEmail, token) {
-  if (!env.RESEND_API_KEY) return;
+  if (!env.RESEND_API_KEY) {
+    console.log("reset email: RESEND_API_KEY not set -> skipping send");
+    return;
+  }
 
   const base = env.APP_BASE_URL || "";
   const link = base ? `${base}/reset#token=${encodeURIComponent(token)}` : "";
@@ -1076,12 +1090,14 @@ async function sendResetEmail(env, toEmail, token) {
       <h3 style="margin:0 0 10px">Reset Password</h3>
       <p>Gunakan token berikut untuk reset password:</p>
       <p style="font-size:16px"><b>${token}</b></p>
-      ${link ? `<p>Atau klik: <a href="${link}">${link}</a></p>` : ""}
+      ${link ? `<p>Atau klik link: <a href="${link}">${link}</a></p>` : ""}
       <p style="color:#64748b">Jika bukan kamu, abaikan email ini.</p>
     </div>
   `;
 
-  const from = env.RESET_FROM || `no-reply@${env.DOMAIN}`;
+  const from = env.RESET_FROM || `Org_Lemah <no-reply@${env.DOMAIN}>`;
+
+  console.log("reset email: sending...", { toEmail, from });
 
   const r = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -1099,8 +1115,12 @@ async function sendResetEmail(env, toEmail, token) {
 
   if (!r.ok) {
     const txt = await r.text().catch(() => "");
-    console.log("Resend failed:", r.status, txt.slice(0, 300));
+    console.log("reset email: failed", r.status, txt.slice(0, 800));
+    return;
   }
+
+  const okTxt = await r.text().catch(() => "");
+  console.log("reset email: sent ok", okTxt.slice(0, 300));
 }
 
 // -------------------- Worker entry --------------------
@@ -1110,7 +1130,7 @@ export default {
 
     const url = new URL(request.url);
     const path = url.pathname;
-    const cookieSecure = url.protocol === "https:"; // dev-friendly
+    const cookieSecure = url.protocol === "https:";
 
     // Pages
     if (request.method === "GET") {
@@ -1124,7 +1144,7 @@ export default {
     // API
     if (path.startsWith("/api/")) {
       try {
-        // Auth
+        // Signup
         if (path === "/api/auth/signup" && request.method === "POST") {
           const body = await readJson(request);
           if (!body) return badRequest("JSON required");
@@ -1145,7 +1165,6 @@ export default {
           const t = nowSec();
           const id = crypto.randomUUID();
 
-          // first user becomes admin
           const c = await env.DB.prepare(`SELECT COUNT(*) as c FROM users`).first();
           const count = Number(c?.c ?? 0);
           const role = count === 0 ? "admin" : "user";
@@ -1157,16 +1176,12 @@ export default {
               await env.DB.prepare(
                 `INSERT INTO users (id, username, email, pass_salt, pass_hash, pass_iters, role, alias_limit, disabled, created_at)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`
-              )
-                .bind(id, username, email, pass_salt, pass_hash, iters, role, aliasLimit, t)
-                .run();
+              ).bind(id, username, email, pass_salt, pass_hash, iters, role, aliasLimit, t).run();
             } else {
               await env.DB.prepare(
                 `INSERT INTO users (id, username, email, pass_salt, pass_hash, role, alias_limit, disabled, created_at)
                  VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)`
-              )
-                .bind(id, username, email, pass_salt, pass_hash, role, aliasLimit, t)
-                .run();
+              ).bind(id, username, email, pass_salt, pass_hash, role, aliasLimit, t).run();
             }
           } catch (e) {
             const msg = String(e && e.message ? e.message : e);
@@ -1185,6 +1200,7 @@ export default {
           );
         }
 
+        // Login
         if (path === "/api/auth/login" && request.method === "POST") {
           const body = await readJson(request);
           if (!body) return badRequest("JSON required");
@@ -1218,8 +1234,7 @@ export default {
           try {
             hash = await pbkdf2HashBase64Url(pw, saltBytes, iters);
           } catch (e) {
-            const name = e?.name || "";
-            if (name === "NotSupportedError") {
+            if ((e?.name || "") === "NotSupportedError") {
               return unauthorized("Parameter hash tidak didukung. Silakan reset password.");
             }
             throw e;
@@ -1237,6 +1252,7 @@ export default {
           );
         }
 
+        // Logout
         if (path === "/api/auth/logout" && request.method === "POST") {
           await destroySession(request, env);
           return json(
@@ -1246,6 +1262,7 @@ export default {
           );
         }
 
+        // Reset request
         if (path === "/api/auth/reset/request" && request.method === "POST") {
           const body = await readJson(request);
           if (!body) return badRequest("JSON required");
@@ -1257,7 +1274,7 @@ export default {
             .bind(email)
             .first();
 
-          // Selalu balas ok (anti user-enumeration)
+          // anti user-enumeration
           if (!user || user.disabled) return json({ ok: true });
 
           const tokenBytes = crypto.getRandomValues(new Uint8Array(32));
@@ -1269,14 +1286,13 @@ export default {
           await env.DB.prepare(
             `INSERT INTO reset_tokens (token_hash, user_id, expires_at, created_at)
              VALUES (?, ?, ?, ?)`
-          )
-            .bind(tokenHash, user.id, t + ttl, t)
-            .run();
+          ).bind(tokenHash, user.id, t + ttl, t).run();
 
           ctx.waitUntil(sendResetEmail(env, email, token));
           return json({ ok: true });
         }
 
+        // Reset confirm
         if (path === "/api/auth/reset/confirm" && request.method === "POST") {
           const body = await readJson(request);
           if (!body) return badRequest("JSON required");
@@ -1290,9 +1306,7 @@ export default {
           const tokenHash = await sha256Base64Url(encoder.encode(token));
           const rt = await env.DB.prepare(
             `SELECT user_id, expires_at FROM reset_tokens WHERE token_hash = ?`
-          )
-            .bind(tokenHash)
-            .first();
+          ).bind(tokenHash).first();
 
           if (!rt || rt.expires_at <= nowSec()) return badRequest("Token invalid/expired");
 
@@ -1304,18 +1318,13 @@ export default {
           const hasIters = await usersHasPassIters(env);
           if (hasIters) {
             await env.DB.prepare(`UPDATE users SET pass_salt=?, pass_hash=?, pass_iters=? WHERE id=?`)
-              .bind(pass_salt, pass_hash, iters, rt.user_id)
-              .run();
+              .bind(pass_salt, pass_hash, iters, rt.user_id).run();
           } else {
             await env.DB.prepare(`UPDATE users SET pass_salt=?, pass_hash=? WHERE id=?`)
-              .bind(pass_salt, pass_hash, rt.user_id)
-              .run();
+              .bind(pass_salt, pass_hash, rt.user_id).run();
           }
 
-          await env.DB.prepare(`DELETE FROM reset_tokens WHERE token_hash=?`)
-            .bind(tokenHash)
-            .run();
-
+          await env.DB.prepare(`DELETE FROM reset_tokens WHERE token_hash=?`).bind(tokenHash).run();
           return json({ ok: true });
         }
 
@@ -1341,10 +1350,7 @@ export default {
           const rows = await env.DB.prepare(
             `SELECT local_part, disabled, created_at
              FROM aliases WHERE user_id = ? ORDER BY created_at DESC`
-          )
-            .bind(me.id)
-            .all();
-
+          ).bind(me.id).all();
           return json({ ok: true, aliases: rows.results || [] });
         }
 
@@ -1357,9 +1363,7 @@ export default {
 
           const cnt = await env.DB.prepare(
             `SELECT COUNT(*) as c FROM aliases WHERE user_id = ? AND disabled = 0`
-          )
-            .bind(me.id)
-            .first();
+          ).bind(me.id).first();
 
           if (Number(cnt?.c ?? 0) >= me.alias_limit) return forbidden("Limit mail tercapai");
 
@@ -1368,9 +1372,7 @@ export default {
             await env.DB.prepare(
               `INSERT INTO aliases (local_part, user_id, disabled, created_at)
                VALUES (?, ?, 0, ?)`
-            )
-              .bind(local, me.id, t)
-              .run();
+            ).bind(local, me.id, t).run();
           } catch (e) {
             const msg = String(e && e.message ? e.message : e);
             if (msg.toUpperCase().includes("UNIQUE")) return badRequest("Mail sudah dipakai");
@@ -1387,15 +1389,12 @@ export default {
 
           const own = await env.DB.prepare(
             `SELECT local_part FROM aliases WHERE local_part = ? AND user_id = ?`
-          )
-            .bind(local, me.id)
-            .first();
+          ).bind(local, me.id).first();
 
           if (!own) return notFound();
 
           await env.DB.prepare(`DELETE FROM aliases WHERE local_part = ? AND user_id = ?`)
-            .bind(local, me.id)
-            .run();
+            .bind(local, me.id).run();
 
           return json({ ok: true });
         }
@@ -1407,21 +1406,18 @@ export default {
 
           const own = await env.DB.prepare(
             `SELECT local_part FROM aliases WHERE local_part = ? AND user_id = ? AND disabled = 0`
-          )
-            .bind(alias, me.id)
-            .first();
+          ).bind(alias, me.id).first();
+
           if (!own) return forbidden("Mail bukan milikmu / disabled");
 
           const rows = await env.DB.prepare(
             `SELECT id, from_addr, to_addr, subject, date, created_at,
-                    substr(COALESCE(text,''), 1, 160) as snippet
+                    substr(COALESCE(text,''), 1, 180) as snippet
              FROM emails
              WHERE user_id = ? AND local_part = ?
              ORDER BY created_at DESC
              LIMIT 50`
-          )
-            .bind(me.id, alias)
-            .all();
+          ).bind(me.id, alias).all();
 
           return json({ ok: true, emails: rows.results || [] });
         }
@@ -1431,9 +1427,7 @@ export default {
           const row = await env.DB.prepare(
             `SELECT id, from_addr, to_addr, subject, date, text, html, raw_key, created_at
              FROM emails WHERE id = ? AND user_id = ?`
-          )
-            .bind(id, me.id)
-            .first();
+          ).bind(id, me.id).first();
 
           if (!row) return notFound();
           return json({ ok: true, email: row });
@@ -1441,12 +1435,14 @@ export default {
 
         if (path.startsWith("/api/emails/") && request.method === "DELETE") {
           const id = decodeURIComponent(path.slice("/api/emails/".length));
-          const row = await env.DB.prepare(`SELECT raw_key FROM emails WHERE id = ? AND user_id = ?`)
-            .bind(id, me.id)
-            .first();
+          const row = await env.DB.prepare(
+            `SELECT raw_key FROM emails WHERE id = ? AND user_id = ?`
+          ).bind(id, me.id).first();
+
           if (!row) return notFound();
 
-          await env.DB.prepare(`DELETE FROM emails WHERE id = ? AND user_id = ?`).bind(id, me.id).run();
+          await env.DB.prepare(`DELETE FROM emails WHERE id = ? AND user_id = ?`)
+            .bind(id, me.id).run();
 
           if (row.raw_key && env.MAIL_R2) ctx.waitUntil(env.MAIL_R2.delete(row.raw_key));
           return json({ ok: true });
@@ -1476,14 +1472,10 @@ export default {
           const body = await readJson(request);
           if (!body) return badRequest("JSON required");
 
-          const alias_limit =
-            body.alias_limit !== undefined ? safeInt(body.alias_limit, NaN) : undefined;
+          const alias_limit = body.alias_limit !== undefined ? safeInt(body.alias_limit, NaN) : undefined;
           const disabled = body.disabled !== undefined ? safeInt(body.disabled, NaN) : undefined;
 
-          if (
-            alias_limit !== undefined &&
-            (!Number.isFinite(alias_limit) || alias_limit < 0 || alias_limit > 1000)
-          ) {
+          if (alias_limit !== undefined && (!Number.isFinite(alias_limit) || alias_limit < 0 || alias_limit > 1000)) {
             return badRequest("alias_limit invalid");
           }
           if (disabled !== undefined && !(disabled === 0 || disabled === 1)) {
@@ -1492,19 +1484,12 @@ export default {
 
           const sets = [];
           const binds = [];
-          if (alias_limit !== undefined) {
-            sets.push("alias_limit = ?");
-            binds.push(alias_limit);
-          }
-          if (disabled !== undefined) {
-            sets.push("disabled = ?");
-            binds.push(disabled);
-          }
+          if (alias_limit !== undefined) { sets.push("alias_limit = ?"); binds.push(alias_limit); }
+          if (disabled !== undefined) { sets.push("disabled = ?"); binds.push(disabled); }
           if (sets.length === 0) return badRequest("No fields");
 
           binds.push(userId);
           await env.DB.prepare(`UPDATE users SET ${sets.join(", ")} WHERE id = ?`).bind(...binds).run();
-
           return json({ ok: true });
         }
 
@@ -1535,9 +1520,7 @@ export default {
          FROM aliases a
          JOIN users u ON u.id = a.user_id
          WHERE a.local_part = ?`
-      )
-        .bind(local)
-        .first();
+      ).bind(local).first();
 
       if (!row || row.alias_disabled || row.user_disabled) {
         message.setReject("Unknown recipient");
@@ -1550,8 +1533,7 @@ export default {
         return;
       }
 
-      const rawEmail = new Response(message.raw);
-      const ab = await rawEmail.arrayBuffer();
+      const ab = await new Response(message.raw).arrayBuffer();
 
       const parser = new PostalMime();
       const parsed = await parser.parse(ab);
@@ -1562,7 +1544,7 @@ export default {
       const subject = parsed.subject || "";
       const date = parsed.date ? new Date(parsed.date).toISOString() : "";
       const fromAddr =
-        parsed.from && parsed.from.address ? parsed.from.address : message.from || "";
+        parsed.from && parsed.from.address ? parsed.from.address : (message.from || "");
       const toAddr = message.to || "";
 
       const maxTextChars = safeInt(env.MAX_TEXT_CHARS, 200000);
@@ -1573,9 +1555,7 @@ export default {
       if (env.MAIL_R2) {
         raw_key = `emails/${id}.eml`;
         ctx.waitUntil(
-          env.MAIL_R2.put(raw_key, ab, {
-            httpMetadata: { contentType: "message/rfc822" },
-          })
+          env.MAIL_R2.put(raw_key, ab, { httpMetadata: { contentType: "message/rfc822" } })
         );
       }
 
@@ -1583,22 +1563,20 @@ export default {
         `INSERT INTO emails
          (id, local_part, user_id, from_addr, to_addr, subject, date, text, html, raw_key, size, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      )
-        .bind(
-          id,
-          row.local_part,
-          row.user_id,
-          fromAddr,
-          toAddr,
-          subject,
-          date,
-          text,
-          htmlPart,
-          raw_key,
-          ab.byteLength || message.rawSize || 0,
-          t
-        )
-        .run();
+      ).bind(
+        id,
+        row.local_part,
+        row.user_id,
+        fromAddr,
+        toAddr,
+        subject,
+        date,
+        text,
+        htmlPart,
+        raw_key,
+        ab.byteLength || (message.rawSize || 0),
+        t
+      ).run();
     } catch (e) {
       console.log("email handler error:", e && e.stack ? e.stack : e);
       message.setReject("Temporary processing error");
