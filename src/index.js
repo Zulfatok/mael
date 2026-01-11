@@ -1224,7 +1224,7 @@ export default {
           const pw = String(body.pw || "");
 
           if (!/^[a-z0-9_]{3,24}$/.test(username)) return badRequest("Username 3-24, a-z0-9_");
-          if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) return badRequest("Email tidak valid");
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return badRequest("Email tidak valid");
           if (pw.length < 8) return badRequest("Password minimal 8 karakter");
 
           const iters = pbkdf2Iters(env);
@@ -1340,7 +1340,7 @@ export default {
           if (!body) return badRequest("JSON required");
 
           const email = String(body.email || "").trim().toLowerCase();
-          if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) return badRequest("Email tidak valid");
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return badRequest("Email tidak valid");
 
           const user = await env.DB.prepare(`SELECT id, disabled FROM users WHERE email = ?`)
             .bind(email)
