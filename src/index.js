@@ -7,7 +7,7 @@ import PostalMime from "postal-mime";
  * - Signup/Login/Logout
  * - Reset password via Resend (optional; but recommended)
  * - Mail (alias) management with per-user limit
- * - Admin dashboard: list users, set mail limit, disable user
+ * - Admin dashboard: list users, set mail limit, disable user, DELETE user
  * - Email handler: accept via catch-all, store if mail registered else reject
  */
 
@@ -240,281 +240,179 @@ function pageTemplate(title, body, extraHead = "") {
   ${extraHead}
   <style>
     :root{
-      /* Modern Professional Dark Theme */
-      --bg0: #0B0E14;
-      --bg1: #10141C;
-      --bg2: #161B26;
+      --bg0:#070a10;
+      --bg1:#0a0f18;
 
-      --card: linear-gradient(135deg, rgba(18,24,38,.95), rgba(12,17,29,.92));
-      --card-hover: linear-gradient(135deg, rgba(22,30,46,.98), rgba(15,20,34,.95));
-      --card2: rgba(16,22,36,.88);
-      --border: rgba(56,72,105,.35);
-      --border-focus: rgba(96,165,250,.45);
+      --card: rgba(15,23,42,.92);
+      --card2: rgba(11,18,32,.92);
+      --border: rgba(39,55,86,.92);
 
-      --text: #F0F4FF;
-      --text-bright: #FFFFFF;
-      --muted: #9BA9C1;
-      --muted-dark: #6B7A92;
+      --text:#eef2ff;
+      --muted:#b8c3d6;
 
-      /* Enhanced Brand Colors */
-      --brand: #60A5FA;
-      --brand-light: #93C5FD;
-      --brand-dark: #3B82F6;
-      --brand2: #818CF8;
-      --accent: #8B5CF6;
-      --success: #10B981;
-      --warning: #F59E0B;
-      --danger: #EF4444;
+      --brand:#60a5fa;
+      --brand2:#818cf8;
 
-      /* Shadows */
-      --shadow-sm: 0 2px 8px rgba(0,0,0,.2);
-      --shadow-md: 0 8px 24px rgba(0,0,0,.3);
-      --shadow-lg: 0 16px 48px rgba(0,0,0,.4);
-      --shadow-brand: 0 8px 24px rgba(96,165,250,.15);
+      --danger:#ef4444;
 
-      /* Paper */
-      --paper: #FAFBFC;
-      --paperText: #0F172A;
-      --paperBorder: rgba(15,23,42,.08);
+      /* paper (buat baca email biar jelas) */
+      --paper:#f8fafc;
+      --paperText:#0f172a;
+      --paperBorder: rgba(2,6,23,.12);
     }
 
-    *{box-sizing:border-box; margin:0; padding:0;}
-    
+    *{box-sizing:border-box}
     body{
-      font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       margin:0;
       color:var(--text);
       min-height:100vh;
       background:
-        radial-gradient(1400px 700px at 25% -15%, rgba(96,165,250,.12), transparent 65%),
-        radial-gradient(1000px 600px at 85% 5%, rgba(139,92,246,.08), transparent 60%),
-        radial-gradient(800px 500px at 50% 100%, rgba(129,140,248,.06), transparent 55%),
+        radial-gradient(1200px 600px at 20% -10%, rgba(96,165,250,.10), transparent 60%),
+        radial-gradient(900px 500px at 90% 0%, rgba(129,140,248,.08), transparent 55%),
         linear-gradient(180deg, var(--bg1), var(--bg0));
-      background-attachment: fixed;
     }
 
-    a{color:var(--brand-light); text-decoration:none; transition: color .2s ease;}
-    a:hover{color:var(--brand); text-decoration:underline;}
+    a{color:var(--brand);text-decoration:none}
+    a:hover{opacity:.92;text-decoration:underline}
 
-    .wrap{max-width:1100px; margin:0 auto; padding:24px;}
-    
+    .wrap{max-width:1040px;margin:0 auto;padding:18px}
     .hdr{
-      display:flex; justify-content:space-between; align-items:center;
-      gap:16px; padding:14px 0 10px;
-      margin-bottom: 8px;
+      display:flex;justify-content:space-between;align-items:center;
+      gap:14px; padding:12px 0 6px;
     }
-    .brand{display:flex; align-items:center; gap:14px; flex-wrap:wrap;}
-    .logo{display:flex; align-items:center;}
-    .brandText{display:flex; flex-direction:column; line-height:1.1;}
-    .brandName{font-weight:800; font-size:18px; letter-spacing:.3px; color:var(--text-bright);}
-    .brandSub{color:var(--muted); font-size:13px; margin-top:5px; font-weight:500;}
-    .hdrRight{display:flex; gap:12px; align-items:center; flex-wrap:wrap;}
+    .brand{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+    .logo{display:flex;align-items:center}
+    .brandText{display:flex;flex-direction:column;line-height:1.05}
+    .brandName{font-weight:900;letter-spacing:.2px}
+    .brandSub{color:var(--muted);font-size:12.5px;margin-top:4px}
+    .hdrRight{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 
     .card{
-      background: var(--card);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.04), transparent 40%),
+        var(--card);
       border:1px solid var(--border);
-      border-radius:20px;
-      padding:24px;
-      margin:16px 0;
-      box-shadow: var(--shadow-lg);
-      transition: transform .2s ease, box-shadow .2s ease;
-      position: relative;
-      overflow: hidden;
-    }
-    .card::before{
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,.1), transparent);
-    }
-    .card:hover{
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-lg), var(--shadow-brand);
+      border-radius:18px;
+      padding:16px;
+      margin:12px 0;
+      box-shadow: 0 14px 40px rgba(0,0,0,.35);
+      overflow:hidden;
     }
 
-    input, button, select, textarea{font:inherit;}
-    
-    label{
-      display:block; 
-      margin-bottom:8px; 
-      color:var(--muted); 
-      font-size:13px; 
-      font-weight:600;
-      letter-spacing:.3px;
-      text-transform: uppercase;
-    }
-    
-    input, select, textarea{
+    input,button,select,textarea{font:inherit}
+    label{display:block;margin-bottom:6px;color:var(--muted);font-size:13px}
+    input,select,textarea{
       width:100%;
-      padding:14px 16px;
-      border-radius:12px;
-      border:1.5px solid var(--border);
+      padding:12px 12px;
+      border-radius:14px;
+      border:1px solid var(--border);
       background: var(--card2);
       color:var(--text);
       outline:none;
-      font-size: 15px;
-      transition: all .2s ease;
     }
-    input::placeholder{color: var(--muted-dark); opacity:.7;}
-    input:focus, select:focus, textarea:focus{
-      border-color: var(--border-focus);
-      box-shadow: 0 0 0 3px rgba(96,165,250,.08), var(--shadow-sm);
-      background: rgba(18,25,42,.92);
+    input::placeholder{color: rgba(184,195,214,.55)}
+    input:focus,select:focus,textarea:focus{
+      border-color: rgba(96,165,250,.65);
+      box-shadow: 0 0 0 4px rgba(96,165,250,.12);
     }
 
     /* Password show/hide */
-    .pwWrap{position:relative;}
-    .pwWrap input{padding-right: 100px;}
+    .pwWrap{ position:relative; }
+    .pwWrap input{ padding-right: 92px; } /* ruang buat tombol */
     .pwToggle{
       position:absolute;
-      right:12px;
+      right:10px;
       top:50%;
       transform:translateY(-50%);
-      padding:7px 12px;
-      border-radius:8px;
+      padding:6px 10px;
+      border-radius:999px;
       border:1px solid var(--border);
-      background: rgba(96,165,250,.08);
-      color: var(--brand-light);
+      background: rgba(255,255,255,.06);
+      color: var(--muted);
       font-size:12px;
-      font-weight:600;
       cursor:pointer;
-      transition: all .2s ease;
     }
     .pwToggle:hover{
-      background: rgba(96,165,250,.15);
-      color: var(--text-bright);
-      border-color: var(--border-focus);
-      transform:translateY(-50%) scale(1.05);
+      background: rgba(255,255,255,.10);
+      color: var(--text);
+      border-color: rgba(96,165,250,.28);
     }
 
     button{
-      padding:11px 18px;
-      border-radius:12px;
-      border:1.5px solid var(--border);
-      background: rgba(96,165,250,.1);
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid var(--border);
+      background: rgba(96,165,250,.12);
       color:var(--text);
       cursor:pointer;
-      font-weight:600;
-      font-size:14px;
-      transition: all .2s ease;
+      transition: transform .06s ease, background .15s ease, border-color .15s ease, filter .15s ease;
       white-space:nowrap;
-      box-shadow: var(--shadow-sm);
     }
     button:hover{
-      background: rgba(96,165,250,.18);
-      border-color: var(--border-focus);
-      transform: translateY(-1px);
-      box-shadow: var(--shadow-md);
+      background: rgba(96,165,250,.16);
+      border-color: rgba(96,165,250,.28);
+      filter: brightness(1.03);
     }
-    button:active{transform: translateY(0); box-shadow: var(--shadow-sm);}
-    
+    button:active{transform: translateY(1px)}
     .btn-primary{
-      background: linear-gradient(135deg, rgba(96,165,250,.35), rgba(129,140,248,.25));
-      border-color: rgba(96,165,250,.5);
-      color: var(--text-bright);
-      box-shadow: var(--shadow-md), 0 0 20px rgba(96,165,250,.15);
+      background: linear-gradient(135deg, rgba(96,165,250,.28), rgba(129,140,248,.22));
+      border-color: rgba(96,165,250,.38);
     }
-    .btn-primary:hover{
-      background: linear-gradient(135deg, rgba(96,165,250,.45), rgba(129,140,248,.35));
-      border-color: var(--brand-light);
-      box-shadow: var(--shadow-md), 0 0 30px rgba(96,165,250,.25);
-    }
-    
-    .btn-ghost{
-      background: rgba(255,255,255,.03);
-      border-color: rgba(255,255,255,.08);
-    }
-    .btn-ghost:hover{
-      background: rgba(255,255,255,.08);
-      border-color: rgba(255,255,255,.15);
-    }
-    
+    .btn-ghost{background: rgba(255,255,255,.04)}
     .danger{
-      border-color: rgba(239,68,68,.5);
+      border-color: rgba(239,68,68,.50);
       background: rgba(239,68,68,.12);
-      color: #FCA5A5;
     }
-    .danger:hover{
-      background: rgba(239,68,68,.2); 
-      border-color: rgba(239,68,68,.65);
-      color: #FEE2E2;
-    }
+    .danger:hover{background: rgba(239,68,68,.16); border-color: rgba(239,68,68,.60)}
 
-    .muted{color:var(--muted);}
-    
+    .muted{color:var(--muted)}
     .pill{
-      display:inline-flex; align-items:center; gap:6px;
-      padding:7px 13px; border-radius:999px;
+      display:inline-flex;align-items:center;gap:6px;
+      padding:6px 10px;border-radius:999px;
       border:1px solid var(--border);
-      background: rgba(255,255,255,.05);
+      background: rgba(255,255,255,.04);
       color:var(--muted);
       font-size:12px;
-      font-weight:600;
-      transition: all .2s ease;
-      box-shadow: var(--shadow-sm);
     }
-    .pill:hover{
-      background: rgba(255,255,255,.08);
-      border-color: var(--border-focus);
-      transform: scale(1.02);
-    }
-    
     .kbd{
-      font-family: ui-monospace, 'SF Mono', Menlo, Monaco, 'Cascadia Code', monospace;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       font-size: 12px;
-      padding:4px 10px;
-      border-radius:6px;
+      padding:2px 8px;
+      border-radius:999px;
       border:1px solid var(--border);
-      background: rgba(96,165,250,.08);
-      color: var(--brand-light);
-      font-weight:600;
+      background: rgba(255,255,255,.04);
+      color: var(--muted);
     }
 
-    .row{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
-    .split{display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:start;}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .split{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
 
     .listItem{
-      padding:16px 0;
+      padding:12px 0;
       border-bottom:1px solid var(--border);
       display:flex;
       justify-content:space-between;
       align-items:center;
-      gap:12px;
+      gap:10px;
       flex-wrap:wrap;
-      transition: all .2s ease;
-    }
-    .listItem:hover{
-      padding-left: 8px;
-      border-bottom-color: var(--border-focus);
     }
 
     /* Inbox list */
     .mailItem{
-      padding:16px 18px;
+      padding:12px 12px;
       border:1px solid var(--border);
-      border-radius:14px;
-      background: linear-gradient(135deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
-      margin-bottom:12px;
-      transition: all .2s ease;
-      box-shadow: var(--shadow-sm);
+      border-radius:16px;
+      background: rgba(255,255,255,.03);
+      margin-bottom:10px;
     }
-    .mailItem:hover{
-      background: linear-gradient(135deg, rgba(255,255,255,.07), rgba(255,255,255,.04));
-      border-color: var(--border-focus);
-      transform: translateX(4px);
-      box-shadow: var(--shadow-md);
-    }
-    
-    .mailSubject{font-weight:800; font-size:15px; color:var(--text-bright); line-height:1.4;}
-    .mailMeta{color:var(--muted); font-size:13px; margin-top:6px; line-height:1.4; font-weight:500;}
+    .mailSubject{font-weight:900; font-size:14.5px}
+    .mailMeta{color:var(--muted); font-size:12.5px; margin-top:4px; line-height:1.35}
     .mailSnippet{
-      color: var(--muted);
+      color: rgba(238,242,255,.92);
       font-size: 13.5px;
-      margin-top:12px;
-      line-height:1.6;
+      margin-top:10px;
+      line-height:1.55;
       white-space:pre-wrap;
       word-break:break-word;
     }
@@ -523,57 +421,43 @@ function pageTemplate(title, body, extraHead = "") {
     .viewerHead{
       display:flex;
       justify-content:space-between;
-      gap:14px;
+      gap:10px;
       align-items:flex-start;
       flex-wrap:wrap;
-      padding-bottom: 12px;
     }
-    
     .paper{
       background: var(--paper);
       color: var(--paperText);
       border: 1px solid var(--paperBorder);
-      border-radius: 14px;
-      padding: 18px;
-      box-shadow: var(--shadow-sm);
+      border-radius: 16px;
+      padding: 14px;
     }
-    
     .mailFrame{
       width:100%;
       height: 70vh;
       border: 1px solid var(--paperBorder);
-      border-radius: 14px;
+      border-radius: 16px;
       background: var(--paper);
-      box-shadow: var(--shadow-md);
     }
-    
     .mailText{
       white-space:pre-wrap;
       word-break:break-word;
-      font-family: ui-monospace, 'SF Mono', Menlo, Monaco, 'Cascadia Code', monospace;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       font-size: 14px;
-      line-height: 1.7;
+      line-height: 1.65;
       margin:0;
     }
 
-    .hr{border:0; border-top:1px solid var(--border); margin:18px 0;}
-
-    /* Scrollbar */
-    ::-webkit-scrollbar{width:10px; height:10px;}
-    ::-webkit-scrollbar-track{background:rgba(255,255,255,.02);}
-    ::-webkit-scrollbar-thumb{background:rgba(96,165,250,.2); border-radius:5px;}
-    ::-webkit-scrollbar-thumb:hover{background:rgba(96,165,250,.35);}
+    .hr{border:0;border-top:1px solid var(--border);margin:12px 0}
 
     @media (max-width: 860px){
-      .split{grid-template-columns:1fr;}
-      .card{padding:20px;}
+      .split{grid-template-columns:1fr}
     }
     @media (max-width: 760px){
-      .wrap{padding:16px;}
-      .hdr{flex-direction:column; align-items:flex-start;}
-      .row{grid-template-columns:1fr;}
+      .wrap{padding:14px}
+      .hdr{flex-direction:column;align-items:flex-start}
+      .row{grid-template-columns:1fr}
       .mailFrame{height: 58vh;}
-      .card{padding:18px;}
     }
   </style>
 </head>
@@ -952,21 +836,16 @@ const PAGES = {
             box.appendChild(div);
           }
           
-          // Reload emails if there's a selected alias
-          if(SELECTED){
-            await loadEmails();
-          }
+          if(SELECTED){ await loadEmails(); }
         }
 
         async function selectAlias(local){
           const wasSelected = SELECTED===local;
           
           if(wasSelected){
-            // Close inbox
             SELECTED=null;
             stopAutoRefresh();
           } else {
-            // Open inbox
             SELECTED=local;
             startAutoRefresh();
           }
@@ -974,7 +853,6 @@ const PAGES = {
           await loadAliases();
           
           if(!wasSelected){
-            // Scroll to inbox
             const inbox = document.getElementById('inbox_'+local);
             if(inbox) inbox.scrollIntoView({behavior:'smooth', block:'nearest'});
           }
@@ -993,7 +871,7 @@ const PAGES = {
               return; 
             }
             
-            const refreshInfo = silent ? '<span class="muted" style="font-size:11px;margin-left:8px">🔄 Auto-refresh aktif (30s)</span>' : '';
+            const refreshInfo = silent ? '<span class="muted" style="font-size:11px;margin-left:8px">\ud83d\udd04 Auto (30s)</span>' : '';
             
             let html = '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">'+
               '<b>Inbox</b>'+refreshInfo+
@@ -1019,7 +897,7 @@ const PAGES = {
             
             box.innerHTML = html;
           }catch(e){
-            if(!silent) alert('Error loading emails: '+e.message);
+            if(!silent) console.error('Load emails error:', e);
           }
         }
 
@@ -1126,8 +1004,8 @@ const PAGES = {
         function startAutoRefresh(){
           stopAutoRefresh();
           AUTO_REFRESH_INTERVAL = setInterval(()=>{
-            loadEmails(true); // silent refresh
-          }, 30000); // 30 seconds
+            loadEmails(true);
+          }, 30000);
         }
 
         function stopAutoRefresh(){
@@ -1172,6 +1050,7 @@ const PAGES = {
       <div class="card">
         <b>Users</b>
         <div class="muted" style="margin-top:6px">Domain: <span class="kbd">@${domain}</span></div>
+        <div class="muted" style="margin-top:6px">⚠️ Delete akan menghapus data user (sessions, tokens, aliases, emails) + raw email di R2 jika ada.</div>
         <div id="users" style="margin-top:12px"></div>
       </div>
 
@@ -1212,7 +1091,8 @@ const PAGES = {
               '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
                 '<input id="lim_'+esc(u.id)+'" value="'+u.alias_limit+'" style="width:120px" />'+
                 '<button class="btn-primary" onclick="setLimit(\\''+esc(u.id)+'\\')">Set limit</button>'+
-                '<button onclick="toggleUser(\\''+esc(u.id)+'\\','+(u.disabled?0:1)+')" class="'+(u.disabled?'btn-primary':'danger')+'">'+(u.disabled?'Enable':'Disable')+'</button>'+
+                '<button onclick="toggleUser(\\''+esc(u.id)+'\\','+(u.disabled?0:1)+')" class="danger">'+(u.disabled?'Enable':'Disable')+'</button>'+
+                '<button onclick="delUser(\\''+encodeURIComponent(u.id)+'\\')" class="danger">Delete</button>'+
               '</div>';
             box.appendChild(div);
           }
@@ -1240,6 +1120,14 @@ const PAGES = {
           await loadUsers();
         }
 
+        async function delUser(encId){
+          const id = decodeURIComponent(encId);
+          if(!confirm('Hapus user ini?\\n\\nID: '+id+'\\n\\nAksi ini akan menghapus: sessions, reset tokens, mail aliases, emails (dan raw di R2 jika ada).')) return;
+
+          const j = await api('/api/admin/users/'+encodeURIComponent(id), { method:'DELETE' });
+          if(!j.ok){ alert(j.error||'gagal'); return; }
+          await loadUsers();
+        }
 
         async function logout(){
           await fetch('/api/auth/logout',{method:'POST'});
@@ -1306,6 +1194,42 @@ async function cleanupExpired(env) {
   try {
     await env.DB.prepare(`DELETE FROM reset_tokens WHERE expires_at <= ?`).bind(t).run();
   } catch { }
+}
+
+// NEW: delete user (cascade + R2 cleanup)
+async function deleteUserCascade(env, userId, ctx) {
+  // ambil raw_key dulu sebelum email dihapus
+  let rawKeys = [];
+  try {
+    const r = await env.DB.prepare(
+      `SELECT raw_key FROM emails WHERE user_id = ? AND raw_key IS NOT NULL`
+    )
+      .bind(userId)
+      .all();
+    rawKeys = (r.results || []).map((x) => x?.raw_key).filter(Boolean);
+  } catch { }
+
+  // hapus data turunan dulu
+  await env.DB.prepare(`DELETE FROM sessions WHERE user_id = ?`).bind(userId).run();
+  await env.DB.prepare(`DELETE FROM reset_tokens WHERE user_id = ?`).bind(userId).run();
+  await env.DB.prepare(`DELETE FROM emails WHERE user_id = ?`).bind(userId).run();
+  await env.DB.prepare(`DELETE FROM aliases WHERE user_id = ?`).bind(userId).run();
+
+  // hapus user
+  await env.DB.prepare(`DELETE FROM users WHERE id = ?`).bind(userId).run();
+
+  // hapus raw eml dari R2 (kalau ada)
+  if (env.MAIL_R2 && rawKeys.length) {
+    for (let i = 0; i < rawKeys.length; i += 1000) {
+      const chunk = rawKeys.slice(i, i + 1000);
+      if (ctx && typeof ctx.waitUntil === "function") {
+        ctx.waitUntil(env.MAIL_R2.delete(chunk));
+      } else {
+        // fallback sync (harusnya fetch selalu punya ctx)
+        await env.MAIL_R2.delete(chunk);
+      }
+    }
+  }
 }
 
 // -------------------- Reset email (Resend) --------------------
@@ -1763,51 +1687,26 @@ export default {
           return json({ ok: true });
         }
 
+        // NEW: delete user (admin)
         if (path.startsWith("/api/admin/users/") && request.method === "DELETE") {
           if (me.role !== "admin") return forbidden("Forbidden");
 
           const userId = decodeURIComponent(path.slice("/api/admin/users/".length));
 
-          // Check if user exists and is not admin
-          const targetUser = await env.DB.prepare(
-            `SELECT id, role FROM users WHERE id = ?`
-          ).bind(userId).first();
+          // jangan hapus diri sendiri biar gak ngunci admin
+          if (userId === me.id) return badRequest("Tidak bisa menghapus akun sendiri");
 
-          if (!targetUser) return notFound();
-          if (targetUser.role === "admin") {
-            return forbidden("Tidak dapat menghapus admin");
+          const u = await env.DB.prepare(`SELECT id, role FROM users WHERE id = ?`).bind(userId).first();
+          if (!u) return notFound();
+
+          // safety: jangan hapus admin terakhir
+          if (u.role === "admin") {
+            const c = await env.DB.prepare(`SELECT COUNT(*) as c FROM users WHERE role = 'admin'`).first();
+            const adminCount = Number(c?.c ?? 0);
+            if (adminCount <= 1) return badRequest("Tidak bisa menghapus admin terakhir");
           }
 
-          // Delete user's emails from R2
-          const emails = await env.DB.prepare(
-            `SELECT raw_key FROM emails WHERE user_id = ?`
-          ).bind(userId).all();
-
-          for (const email of (emails.results || [])) {
-            if (email.raw_key && env.R2) {
-              try {
-                await env.R2.delete(email.raw_key);
-              } catch (e) {
-                console.error('Error deleting R2 object:', e);
-              }
-            }
-          }
-
-          // Delete user's emails from DB
-          await env.DB.prepare(`DELETE FROM emails WHERE user_id = ?`).bind(userId).run();
-
-          // Delete user's aliases
-          await env.DB.prepare(`DELETE FROM aliases WHERE user_id = ?`).bind(userId).run();
-
-          // Delete user's sessions
-          await env.DB.prepare(`DELETE FROM sessions WHERE user_id = ?`).bind(userId).run();
-
-          // Delete user's reset tokens
-          await env.DB.prepare(`DELETE FROM reset_tokens WHERE user_id = ?`).bind(userId).run();
-
-          // Finally, delete the user
-          await env.DB.prepare(`DELETE FROM users WHERE id = ?`).bind(userId).run();
-
+          await deleteUserCascade(env, userId, ctx);
           return json({ ok: true });
         }
 
@@ -1863,7 +1762,8 @@ export default {
 
       const subject = parsed.subject || "";
       const date = parsed.date ? new Date(parsed.date).toISOString() : "";
-      const fromAddr = parsed.from && parsed.from.address ? parsed.from.address : (message.from || "");
+      const fromAddr =
+        parsed.from && parsed.from.address ? parsed.from.address : message.from || "";
       const toAddr = message.to || "";
 
       const maxTextChars = safeInt(env.MAX_TEXT_CHARS, 200000);
@@ -1873,7 +1773,9 @@ export default {
       let raw_key = null;
       if (env.MAIL_R2) {
         raw_key = `emails/${id}.eml`;
-        ctx.waitUntil(env.MAIL_R2.put(raw_key, ab, { httpMetadata: { contentType: "message/rfc822" } }));
+        ctx.waitUntil(
+          env.MAIL_R2.put(raw_key, ab, { httpMetadata: { contentType: "message/rfc822" } })
+        );
       }
 
       await env.DB.prepare(
@@ -1892,7 +1794,7 @@ export default {
           text,
           htmlPart,
           raw_key,
-          ab.byteLength || (message.rawSize || 0),
+          ab.byteLength || message.rawSize || 0,
           t
         )
         .run();
