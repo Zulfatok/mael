@@ -240,24 +240,26 @@ function pageTemplate(title, body, extraHead = "") {
   ${extraHead}
   <style>
     :root{
-      /* Dark Purple/Pink Theme (TrashBox Style) */
-      --bg0:#0d0a1a;
-      --bg1:#15112b;
-      --bg2:#1d1736;
+      /* Modern Slate Blue Theme - Professional & Eye-Friendly */
+      --bg0:#0f172a;
+      --bg1:#1e293b;
+      --bg2:#334155;
 
-      --card: rgba(30,20,50,.85);
-      --card2: rgba(20,15,35,.88);
-      --border: rgba(150,80,150,.25);
+      --card: rgba(30,41,59,.92);
+      --card2: rgba(15,23,42,.95);
+      --border: rgba(71,85,105,.45);
 
-      --text:#f5f3ff;
-      --muted:#c4b5fd;
+      --text:#f1f5f9;
+      --muted:#94a3b8;
 
-      /* Pink/Magenta Brand */
-      --brand:#e91e63;
-      --brand-light:#f06292;
-      --brand2:#ab47bc;
+      /* Bright Blue Brand */
+      --brand:#3b82f6;
+      --brand-light:#60a5fa;
+      --brand2:#06b6d4;
 
       --danger:#ef4444;
+      --success:#10b981;
+      --warning:#f59e0b;
 
       /* paper (buat baca email biar jelas) */
       --paper:#f8fafc;
@@ -272,9 +274,9 @@ function pageTemplate(title, body, extraHead = "") {
       color:var(--text);
       min-height:100vh;
       background:
-        radial-gradient(1200px 600px at 15% -5%, rgba(233,30,99,.15), transparent 65%),
-        radial-gradient(900px 500px at 85% 5%, rgba(171,71,188,.12), transparent 60%),
-        radial-gradient(700px 400px at 50% 100%, rgba(156,39,176,.08), transparent 55%),
+        radial-gradient(1200px 600px at 10% 0%, rgba(59,130,246,.12), transparent 60%),
+        radial-gradient(900px 500px at 90% 10%, rgba(6,182,212,.10), transparent 55%),
+        radial-gradient(700px 400px at 50% 100%, rgba(99,102,241,.08), transparent 50%),
         linear-gradient(180deg, var(--bg1), var(--bg0));
     }
 
@@ -295,17 +297,17 @@ function pageTemplate(title, body, extraHead = "") {
 
     .card{
       background:
-        linear-gradient(180deg, rgba(255,255,255,.06), transparent 50%),
+        linear-gradient(180deg, rgba(255,255,255,.05), transparent 50%),
         var(--card);
-      border:1px solid rgba(200,100,200,.3);
+      border:1px solid rgba(100,116,139,.35);
       border-radius:20px;
-      padding:18px;
-      margin:14px 0;
+      padding:20px;
+      margin:16px 0;
       box-shadow: 
-        0 4px 24px rgba(0,0,0,.4),
-        0 0 1px rgba(233,30,99,.3);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
+        0 8px 32px rgba(0,0,0,.4),
+        0 1px 2px rgba(59,130,246,.15);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       overflow:hidden;
     }
 
@@ -349,30 +351,34 @@ function pageTemplate(title, body, extraHead = "") {
     }
 
     button{
-      padding:10px 12px;
-      border-radius:14px;
+      padding:11px 16px;
+      border-radius:12px;
       border:1px solid var(--border);
-      background: rgba(233,30,99,.12);
+      background: rgba(59,130,246,.15);
       color:var(--text);
       cursor:pointer;
-      transition: transform .06s ease, background .15s ease, border-color .15s ease, filter .15s ease;
+      font-weight:500;
+      transition: all .2s ease;
       white-space:nowrap;
     }
     button:hover{
-      background: rgba(233,30,99,.18);
-      border-color: rgba(233,30,99,.35);
-      filter: brightness(1.05);
+      background: rgba(59,130,246,.22);
+      border-color: rgba(96,165,250,.45);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(59,130,246,.25);
     }
-    button:active{transform: translateY(1px)}
+    button:active{transform: translateY(0)}
     .btn-primary{
-      background: linear-gradient(135deg, rgba(233,30,99,.35), rgba(171,71,188,.28));
-      border-color: rgba(233,30,99,.45);
-      box-shadow: 0 4px 14px rgba(233,30,99,.25);
+      background: linear-gradient(135deg, rgba(59,130,246,.4), rgba(6,182,212,.3));
+      border-color: rgba(59,130,246,.5);
+      font-weight:600;
+      box-shadow: 0 4px 14px rgba(59,130,246,.3);
     }
     .btn-primary:hover{
-      background: linear-gradient(135deg, rgba(233,30,99,.45), rgba(171,71,188,.38));
-      border-color: rgba(240,98,146,.55);
-      box-shadow: 0 6px 18px rgba(233,30,99,.35);
+      background: linear-gradient(135deg, rgba(59,130,246,.5), rgba(6,182,212,.4));
+      border-color: rgba(96,165,250,.6);
+      box-shadow: 0 6px 20px rgba(59,130,246,.4);
+      transform: translateY(-2px);
     }
     .btn-ghost{background: rgba(255,255,255,.04)}
     .danger{
