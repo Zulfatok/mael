@@ -1212,7 +1212,8 @@ const PAGES = {
               '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
                 '<input id="lim_'+esc(u.id)+'" value="'+u.alias_limit+'" style="width:120px" />'+
                 '<button class="btn-primary" onclick="setLimit(\\''+esc(u.id)+'\\')">Set limit</button>'+
-                '<button onclick="toggleUser(\\''+esc(u.id)+'\\','+(u.disabled?0:1)+')" class="danger">'+(u.disabled?'Enable':'Disable')+'</button>'+
+                '<button onclick="toggleUser(\\''+esc(u.id)+'\\','+(u.disabled?0:1)+')" class="'+(u.disabled?'btn-primary':'danger')+'">'+(u.disabled?'Enable':'Disable')+'</button>'+
+                (u.role!=='admin' ? '<button onclick="deleteUser(\\''+esc(u.id)+'\\',\\''+esc(u.username)+'\\')" class="danger" style="background:rgba(239,68,68,.2);border-color:rgba(239,68,68,.7)">🗑️ Delete</button>' : '')+
               '</div>';
             box.appendChild(div);
           }
@@ -1237,6 +1238,26 @@ const PAGES = {
             body:JSON.stringify({disabled})
           });
           if(!j.ok){ alert(j.error||'gagal'); return; }
+          await loadUsers();
+        }
+
+        async function deleteUser(id, username){
+          const confirmed = confirm(
+            '⚠️ PERINGATAN!\n\n' +
+            'Apakah Anda yakin ingin menghapus user "' + username + '"?\n\n' +
+            'Tindakan ini akan:\n' +
+            '• Menghapus semua mail aliases user ini\n' +
+            '• Menghapus semua email yang tersimpan\n' +
+            '• Tidak dapat dikembalikan\n\n' +
+            'Ketik OK untuk melanjutkan.'
+          );
+          if(!confirmed) return;
+
+          const j = await api('/api/admin/users/'+encodeURIComponent(id), {
+            method:'DELETE'
+          });
+          if(!j.ok){ alert(j.error||'gagal'); return; }
+          alert('✅ User "' + username + '" berhasil dihapus');
           await loadUsers();
         }
 
@@ -1759,6 +1780,54 @@ export default {
           await env.DB.prepare(`UPDATE users SET ${sets.join(", ")} WHERE id = ?`)
             .bind(...binds)
             .run();
+          return json({ ok: true });
+        }
+
+        if (path.startsWith("/api/admin/users/") && request.method === "DELETE") {
+          if (me.role !== "admin") return forbidden("Forbidden");
+
+          const userId = decodeURIComponent(path.slice("/api/admin/users/".length));
+
+          // Check if user exists and is not admin
+          const targetUser = await env.DB.prepare(
+            `SELECT id, role FROM users WHERE id = ?`
+          ).bind(userId).first();
+
+          if (!targetUser) return notFound();
+          if (targetUser.role === "admin") {
+            return forbidden("Tidak dapat menghapus admin");
+          }
+
+          // Delete user's emails from R2
+          const emails = await env.DB.prepare(
+            `SELECT raw_key FROM emails WHERE user_id = ?`
+          ).bind(userId).all();
+
+          for (const email of (emails.results || [])) {
+            if (email.raw_key && env.R2) {
+              try {
+                await env.R2.delete(email.raw_key);
+              } catch (e) {
+                console.error('Error deleting R2 object:', e);
+              }
+            }
+          }
+
+          // Delete user's emails from DB
+          await env.DB.prepare(`DELETE FROM emails WHERE user_id = ?`).bind(userId).run();
+
+          // Delete user's aliases
+          await env.DB.prepare(`DELETE FROM aliases WHERE user_id = ?`).bind(userId).run();
+
+          // Delete user's sessions
+          await env.DB.prepare(`DELETE FROM sessions WHERE user_id = ?`).bind(userId).run();
+
+          // Delete user's reset tokens
+          await env.DB.prepare(`DELETE FROM reset_tokens WHERE user_id = ?`).bind(userId).run();
+
+          // Finally, delete the user
+          await env.DB.prepare(`DELETE FROM users WHERE id = ?`).bind(userId).run();
+
           return json({ ok: true });
         }
 
