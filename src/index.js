@@ -240,179 +240,281 @@ function pageTemplate(title, body, extraHead = "") {
   ${extraHead}
   <style>
     :root{
-      --bg0:#070a10;
-      --bg1:#0a0f18;
+      /* Modern Professional Dark Theme */
+      --bg0: #0B0E14;
+      --bg1: #10141C;
+      --bg2: #161B26;
 
-      --card: rgba(15,23,42,.92);
-      --card2: rgba(11,18,32,.92);
-      --border: rgba(39,55,86,.92);
+      --card: linear-gradient(135deg, rgba(18,24,38,.95), rgba(12,17,29,.92));
+      --card-hover: linear-gradient(135deg, rgba(22,30,46,.98), rgba(15,20,34,.95));
+      --card2: rgba(16,22,36,.88);
+      --border: rgba(56,72,105,.35);
+      --border-focus: rgba(96,165,250,.45);
 
-      --text:#eef2ff;
-      --muted:#b8c3d6;
+      --text: #F0F4FF;
+      --text-bright: #FFFFFF;
+      --muted: #9BA9C1;
+      --muted-dark: #6B7A92;
 
-      --brand:#60a5fa;
-      --brand2:#818cf8;
+      /* Enhanced Brand Colors */
+      --brand: #60A5FA;
+      --brand-light: #93C5FD;
+      --brand-dark: #3B82F6;
+      --brand2: #818CF8;
+      --accent: #8B5CF6;
+      --success: #10B981;
+      --warning: #F59E0B;
+      --danger: #EF4444;
 
-      --danger:#ef4444;
+      /* Shadows */
+      --shadow-sm: 0 2px 8px rgba(0,0,0,.2);
+      --shadow-md: 0 8px 24px rgba(0,0,0,.3);
+      --shadow-lg: 0 16px 48px rgba(0,0,0,.4);
+      --shadow-brand: 0 8px 24px rgba(96,165,250,.15);
 
-      /* paper (buat baca email biar jelas) */
-      --paper:#f8fafc;
-      --paperText:#0f172a;
-      --paperBorder: rgba(2,6,23,.12);
+      /* Paper */
+      --paper: #FAFBFC;
+      --paperText: #0F172A;
+      --paperBorder: rgba(15,23,42,.08);
     }
 
-    *{box-sizing:border-box}
+    *{box-sizing:border-box; margin:0; padding:0;}
+    
     body{
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
       margin:0;
       color:var(--text);
       min-height:100vh;
       background:
-        radial-gradient(1200px 600px at 20% -10%, rgba(96,165,250,.10), transparent 60%),
-        radial-gradient(900px 500px at 90% 0%, rgba(129,140,248,.08), transparent 55%),
+        radial-gradient(1400px 700px at 25% -15%, rgba(96,165,250,.12), transparent 65%),
+        radial-gradient(1000px 600px at 85% 5%, rgba(139,92,246,.08), transparent 60%),
+        radial-gradient(800px 500px at 50% 100%, rgba(129,140,248,.06), transparent 55%),
         linear-gradient(180deg, var(--bg1), var(--bg0));
+      background-attachment: fixed;
     }
 
-    a{color:var(--brand);text-decoration:none}
-    a:hover{opacity:.92;text-decoration:underline}
+    a{color:var(--brand-light); text-decoration:none; transition: color .2s ease;}
+    a:hover{color:var(--brand); text-decoration:underline;}
 
-    .wrap{max-width:1040px;margin:0 auto;padding:18px}
+    .wrap{max-width:1100px; margin:0 auto; padding:24px;}
+    
     .hdr{
-      display:flex;justify-content:space-between;align-items:center;
-      gap:14px; padding:12px 0 6px;
+      display:flex; justify-content:space-between; align-items:center;
+      gap:16px; padding:14px 0 10px;
+      margin-bottom: 8px;
     }
-    .brand{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-    .logo{display:flex;align-items:center}
-    .brandText{display:flex;flex-direction:column;line-height:1.05}
-    .brandName{font-weight:900;letter-spacing:.2px}
-    .brandSub{color:var(--muted);font-size:12.5px;margin-top:4px}
-    .hdrRight{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .brand{display:flex; align-items:center; gap:14px; flex-wrap:wrap;}
+    .logo{display:flex; align-items:center;}
+    .brandText{display:flex; flex-direction:column; line-height:1.1;}
+    .brandName{font-weight:800; font-size:18px; letter-spacing:.3px; color:var(--text-bright);}
+    .brandSub{color:var(--muted); font-size:13px; margin-top:5px; font-weight:500;}
+    .hdrRight{display:flex; gap:12px; align-items:center; flex-wrap:wrap;}
 
     .card{
-      background:
-        linear-gradient(180deg, rgba(255,255,255,.04), transparent 40%),
-        var(--card);
+      background: var(--card);
       border:1px solid var(--border);
-      border-radius:18px;
-      padding:16px;
-      margin:12px 0;
-      box-shadow: 0 14px 40px rgba(0,0,0,.35);
-      overflow:hidden;
+      border-radius:20px;
+      padding:24px;
+      margin:16px 0;
+      box-shadow: var(--shadow-lg);
+      transition: transform .2s ease, box-shadow .2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before{
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.1), transparent);
+    }
+    .card:hover{
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg), var(--shadow-brand);
     }
 
-    input,button,select,textarea{font:inherit}
-    label{display:block;margin-bottom:6px;color:var(--muted);font-size:13px}
-    input,select,textarea{
+    input, button, select, textarea{font:inherit;}
+    
+    label{
+      display:block; 
+      margin-bottom:8px; 
+      color:var(--muted); 
+      font-size:13px; 
+      font-weight:600;
+      letter-spacing:.3px;
+      text-transform: uppercase;
+    }
+    
+    input, select, textarea{
       width:100%;
-      padding:12px 12px;
-      border-radius:14px;
-      border:1px solid var(--border);
+      padding:14px 16px;
+      border-radius:12px;
+      border:1.5px solid var(--border);
       background: var(--card2);
       color:var(--text);
       outline:none;
+      font-size: 15px;
+      transition: all .2s ease;
     }
-    input::placeholder{color: rgba(184,195,214,.55)}
-    input:focus,select:focus,textarea:focus{
-      border-color: rgba(96,165,250,.65);
-      box-shadow: 0 0 0 4px rgba(96,165,250,.12);
+    input::placeholder{color: var(--muted-dark); opacity:.7;}
+    input:focus, select:focus, textarea:focus{
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(96,165,250,.08), var(--shadow-sm);
+      background: rgba(18,25,42,.92);
     }
 
     /* Password show/hide */
-    .pwWrap{ position:relative; }
-    .pwWrap input{ padding-right: 92px; } /* ruang buat tombol */
+    .pwWrap{position:relative;}
+    .pwWrap input{padding-right: 100px;}
     .pwToggle{
       position:absolute;
-      right:10px;
+      right:12px;
       top:50%;
       transform:translateY(-50%);
-      padding:6px 10px;
-      border-radius:999px;
+      padding:7px 12px;
+      border-radius:8px;
       border:1px solid var(--border);
-      background: rgba(255,255,255,.06);
-      color: var(--muted);
+      background: rgba(96,165,250,.08);
+      color: var(--brand-light);
       font-size:12px;
+      font-weight:600;
       cursor:pointer;
+      transition: all .2s ease;
     }
     .pwToggle:hover{
-      background: rgba(255,255,255,.10);
-      color: var(--text);
-      border-color: rgba(96,165,250,.28);
+      background: rgba(96,165,250,.15);
+      color: var(--text-bright);
+      border-color: var(--border-focus);
+      transform:translateY(-50%) scale(1.05);
     }
 
     button{
-      padding:10px 12px;
-      border-radius:14px;
-      border:1px solid var(--border);
-      background: rgba(96,165,250,.12);
+      padding:11px 18px;
+      border-radius:12px;
+      border:1.5px solid var(--border);
+      background: rgba(96,165,250,.1);
       color:var(--text);
       cursor:pointer;
-      transition: transform .06s ease, background .15s ease, border-color .15s ease, filter .15s ease;
+      font-weight:600;
+      font-size:14px;
+      transition: all .2s ease;
       white-space:nowrap;
+      box-shadow: var(--shadow-sm);
     }
     button:hover{
-      background: rgba(96,165,250,.16);
-      border-color: rgba(96,165,250,.28);
-      filter: brightness(1.03);
+      background: rgba(96,165,250,.18);
+      border-color: var(--border-focus);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
     }
-    button:active{transform: translateY(1px)}
+    button:active{transform: translateY(0); box-shadow: var(--shadow-sm);}
+    
     .btn-primary{
-      background: linear-gradient(135deg, rgba(96,165,250,.28), rgba(129,140,248,.22));
-      border-color: rgba(96,165,250,.38);
+      background: linear-gradient(135deg, rgba(96,165,250,.35), rgba(129,140,248,.25));
+      border-color: rgba(96,165,250,.5);
+      color: var(--text-bright);
+      box-shadow: var(--shadow-md), 0 0 20px rgba(96,165,250,.15);
     }
-    .btn-ghost{background: rgba(255,255,255,.04)}
+    .btn-primary:hover{
+      background: linear-gradient(135deg, rgba(96,165,250,.45), rgba(129,140,248,.35));
+      border-color: var(--brand-light);
+      box-shadow: var(--shadow-md), 0 0 30px rgba(96,165,250,.25);
+    }
+    
+    .btn-ghost{
+      background: rgba(255,255,255,.03);
+      border-color: rgba(255,255,255,.08);
+    }
+    .btn-ghost:hover{
+      background: rgba(255,255,255,.08);
+      border-color: rgba(255,255,255,.15);
+    }
+    
     .danger{
-      border-color: rgba(239,68,68,.50);
+      border-color: rgba(239,68,68,.5);
       background: rgba(239,68,68,.12);
+      color: #FCA5A5;
     }
-    .danger:hover{background: rgba(239,68,68,.16); border-color: rgba(239,68,68,.60)}
+    .danger:hover{
+      background: rgba(239,68,68,.2); 
+      border-color: rgba(239,68,68,.65);
+      color: #FEE2E2;
+    }
 
-    .muted{color:var(--muted)}
+    .muted{color:var(--muted);}
+    
     .pill{
-      display:inline-flex;align-items:center;gap:6px;
-      padding:6px 10px;border-radius:999px;
+      display:inline-flex; align-items:center; gap:6px;
+      padding:7px 13px; border-radius:999px;
       border:1px solid var(--border);
-      background: rgba(255,255,255,.04);
+      background: rgba(255,255,255,.05);
       color:var(--muted);
       font-size:12px;
+      font-weight:600;
+      transition: all .2s ease;
+      box-shadow: var(--shadow-sm);
     }
+    .pill:hover{
+      background: rgba(255,255,255,.08);
+      border-color: var(--border-focus);
+      transform: scale(1.02);
+    }
+    
     .kbd{
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-family: ui-monospace, 'SF Mono', Menlo, Monaco, 'Cascadia Code', monospace;
       font-size: 12px;
-      padding:2px 8px;
-      border-radius:999px;
+      padding:4px 10px;
+      border-radius:6px;
       border:1px solid var(--border);
-      background: rgba(255,255,255,.04);
-      color: var(--muted);
+      background: rgba(96,165,250,.08);
+      color: var(--brand-light);
+      font-weight:600;
     }
 
-    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    .split{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+    .row{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+    .split{display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:start;}
 
     .listItem{
-      padding:12px 0;
+      padding:16px 0;
       border-bottom:1px solid var(--border);
       display:flex;
       justify-content:space-between;
       align-items:center;
-      gap:10px;
+      gap:12px;
       flex-wrap:wrap;
+      transition: all .2s ease;
+    }
+    .listItem:hover{
+      padding-left: 8px;
+      border-bottom-color: var(--border-focus);
     }
 
     /* Inbox list */
     .mailItem{
-      padding:12px 12px;
+      padding:16px 18px;
       border:1px solid var(--border);
-      border-radius:16px;
-      background: rgba(255,255,255,.03);
-      margin-bottom:10px;
+      border-radius:14px;
+      background: linear-gradient(135deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      margin-bottom:12px;
+      transition: all .2s ease;
+      box-shadow: var(--shadow-sm);
     }
-    .mailSubject{font-weight:900; font-size:14.5px}
-    .mailMeta{color:var(--muted); font-size:12.5px; margin-top:4px; line-height:1.35}
+    .mailItem:hover{
+      background: linear-gradient(135deg, rgba(255,255,255,.07), rgba(255,255,255,.04));
+      border-color: var(--border-focus);
+      transform: translateX(4px);
+      box-shadow: var(--shadow-md);
+    }
+    
+    .mailSubject{font-weight:800; font-size:15px; color:var(--text-bright); line-height:1.4;}
+    .mailMeta{color:var(--muted); font-size:13px; margin-top:6px; line-height:1.4; font-weight:500;}
     .mailSnippet{
-      color: rgba(238,242,255,.92);
+      color: var(--muted);
       font-size: 13.5px;
-      margin-top:10px;
-      line-height:1.55;
+      margin-top:12px;
+      line-height:1.6;
       white-space:pre-wrap;
       word-break:break-word;
     }
@@ -421,43 +523,57 @@ function pageTemplate(title, body, extraHead = "") {
     .viewerHead{
       display:flex;
       justify-content:space-between;
-      gap:10px;
+      gap:14px;
       align-items:flex-start;
       flex-wrap:wrap;
+      padding-bottom: 12px;
     }
+    
     .paper{
       background: var(--paper);
       color: var(--paperText);
       border: 1px solid var(--paperBorder);
-      border-radius: 16px;
-      padding: 14px;
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: var(--shadow-sm);
     }
+    
     .mailFrame{
       width:100%;
       height: 70vh;
       border: 1px solid var(--paperBorder);
-      border-radius: 16px;
+      border-radius: 14px;
       background: var(--paper);
+      box-shadow: var(--shadow-md);
     }
+    
     .mailText{
       white-space:pre-wrap;
       word-break:break-word;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-family: ui-monospace, 'SF Mono', Menlo, Monaco, 'Cascadia Code', monospace;
       font-size: 14px;
-      line-height: 1.65;
+      line-height: 1.7;
       margin:0;
     }
 
-    .hr{border:0;border-top:1px solid var(--border);margin:12px 0}
+    .hr{border:0; border-top:1px solid var(--border); margin:18px 0;}
+
+    /* Scrollbar */
+    ::-webkit-scrollbar{width:10px; height:10px;}
+    ::-webkit-scrollbar-track{background:rgba(255,255,255,.02);}
+    ::-webkit-scrollbar-thumb{background:rgba(96,165,250,.2); border-radius:5px;}
+    ::-webkit-scrollbar-thumb:hover{background:rgba(96,165,250,.35);}
 
     @media (max-width: 860px){
-      .split{grid-template-columns:1fr}
+      .split{grid-template-columns:1fr;}
+      .card{padding:20px;}
     }
     @media (max-width: 760px){
-      .wrap{padding:14px}
-      .hdr{flex-direction:column;align-items:flex-start}
-      .row{grid-template-columns:1fr}
+      .wrap{padding:16px;}
+      .hdr{flex-direction:column; align-items:flex-start;}
+      .row{grid-template-columns:1fr;}
       .mailFrame{height: 58vh;}
+      .card{padding:18px;}
     }
   </style>
 </head>
@@ -746,24 +862,11 @@ const PAGES = {
       </div>
 
       <div class="card">
-        <div class="split">
-          <div>
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-              <b>Mail</b>
-              <span class="muted" id="limitInfo"></span>
-            </div>
-            <div id="aliases" style="margin-top:10px"></div>
-          </div>
-
-          <div>
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-              <b>Inbox</b>
-              <button class="btn-ghost" onclick="loadEmails()" id="refreshBtn" disabled>Refresh</button>
-            </div>
-            <div class="muted" id="selAlias" style="margin-top:10px">Pilih mail…</div>
-            <div id="emails" style="margin-top:10px"></div>
-          </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+          <b>Mail</b>
+          <span class="muted" id="limitInfo"></span>
         </div>
+        <div id="aliases" style="margin-top:10px"></div>
       </div>
 
       <div class="card" id="emailView" style="display:none"></div>
@@ -771,6 +874,7 @@ const PAGES = {
       <script>
         let ME=null;
         let SELECTED=null;
+        let AUTO_REFRESH_INTERVAL=null;
 
         function esc(s){return (s||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));}
 
@@ -827,49 +931,95 @@ const PAGES = {
           }
           for(const a of j.aliases){
             const div=document.createElement('div');
-            div.className='listItem';
+            div.style.marginBottom='10px';
+            
             const addr = a.local_part+'@${domain}';
+            const isOpen = SELECTED===a.local_part;
+            
             div.innerHTML =
-              '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
-                '<button class="btn-primary" onclick="selectAlias(\\''+a.local_part+'\\')">Open</button>'+
-                '<span><b>'+esc(addr)+'</b></span>'+
-                (a.disabled?'<span class="pill">disabled</span>':'')+
+              '<div class="listItem">'+
+                '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
+                  '<button class="btn-primary" onclick="selectAlias(\\''+a.local_part+'\\')">'+
+                    (isOpen?'Close':'Open')+
+                  '</button>'+
+                  '<span><b>'+esc(addr)+'</b></span>'+
+                  (a.disabled?'<span class="pill">disabled</span>':'')+
+                '</div>'+
+                '<div><button onclick="delAlias(\\''+a.local_part+'\\')" class="danger">Delete</button></div>'+
               '</div>'+
-              '<div><button onclick="delAlias(\\''+a.local_part+'\\')" class="danger">Delete</button></div>';
+              '<div id="inbox_'+a.local_part+'" style="display:'+(isOpen?'block':'none')+';margin-top:10px;padding-left:10px"></div>';
+            
             box.appendChild(div);
+          }
+          
+          // Reload emails if there's a selected alias
+          if(SELECTED){
+            await loadEmails();
           }
         }
 
         async function selectAlias(local){
-          SELECTED=local;
-          document.getElementById('selAlias').textContent = 'Mail: '+local+'@${domain}';
-          document.getElementById('refreshBtn').disabled=false;
-          await loadEmails();
+          const wasSelected = SELECTED===local;
+          
+          if(wasSelected){
+            // Close inbox
+            SELECTED=null;
+            stopAutoRefresh();
+          } else {
+            // Open inbox
+            SELECTED=local;
+            startAutoRefresh();
+          }
+          
+          await loadAliases();
+          
+          if(!wasSelected){
+            // Scroll to inbox
+            const inbox = document.getElementById('inbox_'+local);
+            if(inbox) inbox.scrollIntoView({behavior:'smooth', block:'nearest'});
+          }
         }
 
-        async function loadEmails(){
+        async function loadEmails(silent=false){
           if(!SELECTED) return;
-          const j = await api('/api/emails?alias='+encodeURIComponent(SELECTED));
-          if(!j.ok){ alert(j.error||'gagal'); return; }
-          const box=document.getElementById('emails');
-          box.innerHTML='';
-          if(j.emails.length===0){
-            box.innerHTML='<div class="muted">Belum ada email masuk.</div>';
-            return;
-          }
-          for(const m of j.emails){
-            const d=document.createElement('div');
-            d.className='mailItem';
-            d.innerHTML =
-              '<div class="mailSubject">'+esc(m.subject||'(no subject)')+'</div>'+
-              '<div class="mailMeta">From: '+esc(m.from_addr||'')+'</div>'+
-              '<div class="mailMeta">'+esc(fmtDate(m.date || m.created_at || ""))+'</div>'+
-              (m.snippet ? '<div class="mailSnippet">'+esc(m.snippet)+'</div>' : '')+
-              '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">'+
-                '<button class="btn-primary" onclick="openEmail(\\''+m.id+'\\')">View</button>'+
-                '<button onclick="delEmail(\\''+m.id+'\\')" class="danger">Delete</button>'+
+          
+          const box=document.getElementById('inbox_'+SELECTED);
+          if(!box) return;
+          
+          try{
+            const j = await api('/api/emails?alias='+encodeURIComponent(SELECTED));
+            if(!j.ok){ 
+              if(!silent) alert(j.error||'gagal'); 
+              return; 
+            }
+            
+            const refreshInfo = silent ? '<span class="muted" style="font-size:11px;margin-left:8px">🔄 Auto-refresh aktif (30s)</span>' : '';
+            
+            let html = '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">'+
+              '<b>Inbox</b>'+refreshInfo+
+              '<button class="btn-ghost" onclick="loadEmails()">Refresh</button>'+
               '</div>';
-            box.appendChild(d);
+            
+            if(j.emails.length===0){
+              html += '<div class="muted">Belum ada email masuk.</div>';
+            } else {
+              for(const m of j.emails){
+                html += '<div class="mailItem">'+
+                  '<div class="mailSubject">'+esc(m.subject||'(no subject)')+'</div>'+
+                  '<div class="mailMeta">From: '+esc(m.from_addr||'')+'</div>'+
+                  '<div class="mailMeta">'+esc(fmtDate(m.date || m.created_at || ""))+'</div>'+
+                  (m.snippet ? '<div class="mailSnippet">'+esc(m.snippet)+'</div>' : '')+
+                  '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">'+
+                    '<button class="btn-primary" onclick="openEmail(\\''+m.id+'\\')">View</button>'+
+                    '<button onclick="delEmail(\\''+m.id+'\\')" class="danger">Delete</button>'+
+                  '</div>'+
+                '</div>';
+              }
+            }
+            
+            box.innerHTML = html;
+          }catch(e){
+            if(!silent) alert('Error loading emails: '+e.message);
           }
         }
 
@@ -958,9 +1108,7 @@ const PAGES = {
           if(!j.ok){ alert(j.error||'gagal'); return; }
           if(SELECTED===local){
             SELECTED=null;
-            document.getElementById('selAlias').textContent='Pilih mail…';
-            document.getElementById('emails').innerHTML='';
-            document.getElementById('refreshBtn').disabled=true;
+            stopAutoRefresh();
           }
           document.getElementById('emailView').style.display='none';
           await loadMe();
@@ -975,7 +1123,22 @@ const PAGES = {
           await loadEmails();
         }
 
+        function startAutoRefresh(){
+          stopAutoRefresh();
+          AUTO_REFRESH_INTERVAL = setInterval(()=>{
+            loadEmails(true); // silent refresh
+          }, 30000); // 30 seconds
+        }
+
+        function stopAutoRefresh(){
+          if(AUTO_REFRESH_INTERVAL){
+            clearInterval(AUTO_REFRESH_INTERVAL);
+            AUTO_REFRESH_INTERVAL = null;
+          }
+        }
+
         async function logout(){
+          stopAutoRefresh();
           await fetch('/api/auth/logout',{method:'POST'});
           location.href='/login';
         }
@@ -1138,10 +1301,10 @@ async function cleanupExpired(env) {
   const t = nowSec();
   try {
     await env.DB.prepare(`DELETE FROM sessions WHERE expires_at <= ?`).bind(t).run();
-  } catch {}
+  } catch { }
   try {
     await env.DB.prepare(`DELETE FROM reset_tokens WHERE expires_at <= ?`).bind(t).run();
-  } catch {}
+  } catch { }
 }
 
 // -------------------- Reset email (Resend) --------------------
@@ -1285,17 +1448,17 @@ export default {
 
           const user = hasIters
             ? await env.DB.prepare(
-                `SELECT id, username, email, pass_salt, pass_hash, pass_iters, role, alias_limit, disabled
+              `SELECT id, username, email, pass_salt, pass_hash, pass_iters, role, alias_limit, disabled
                  FROM users WHERE username = ? OR email = ?`
-              )
-                .bind(id, id)
-                .first()
+            )
+              .bind(id, id)
+              .first()
             : await env.DB.prepare(
-                `SELECT id, username, email, pass_salt, pass_hash, role, alias_limit, disabled
+              `SELECT id, username, email, pass_salt, pass_hash, role, alias_limit, disabled
                  FROM users WHERE username = ? OR email = ?`
-              )
-                .bind(id, id)
-                .first();
+            )
+              .bind(id, id)
+              .first();
 
           if (!user || user.disabled) return unauthorized("Login gagal");
 
