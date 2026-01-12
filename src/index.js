@@ -1213,7 +1213,6 @@ const PAGES = {
                 '<input id="lim_'+esc(u.id)+'" value="'+u.alias_limit+'" style="width:120px" />'+
                 '<button class="btn-primary" onclick="setLimit(\\''+esc(u.id)+'\\')">Set limit</button>'+
                 '<button onclick="toggleUser(\\''+esc(u.id)+'\\','+(u.disabled?0:1)+')" class="'+(u.disabled?'btn-primary':'danger')+'">'+(u.disabled?'Enable':'Disable')+'</button>'+
-                (u.role!=='admin' ? '<button onclick="deleteUser(\\''+esc(u.id)+'\\',\\''+esc(u.username)+'\\')" class="danger" style="background:rgba(239,68,68,.2);border-color:rgba(239,68,68,.7)">🗑️ Delete</button>' : '')+
               '</div>';
             box.appendChild(div);
           }
@@ -1241,25 +1240,6 @@ const PAGES = {
           await loadUsers();
         }
 
-        async function deleteUser(id, username){
-          const confirmed = confirm(
-            '⚠️ PERINGATAN!\n\n' +
-            'Apakah Anda yakin ingin menghapus user "' + username + '"?\n\n' +
-            'Tindakan ini akan:\n' +
-            '• Menghapus semua mail aliases user ini\n' +
-            '• Menghapus semua email yang tersimpan\n' +
-            '• Tidak dapat dikembalikan\n\n' +
-            'Ketik OK untuk melanjutkan.'
-          );
-          if(!confirmed) return;
-
-          const j = await api('/api/admin/users/'+encodeURIComponent(id), {
-            method:'DELETE'
-          });
-          if(!j.ok){ alert(j.error||'gagal'); return; }
-          alert('✅ User "' + username + '" berhasil dihapus');
-          await loadUsers();
-        }
 
         async function logout(){
           await fetch('/api/auth/logout',{method:'POST'});
