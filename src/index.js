@@ -240,18 +240,22 @@ function pageTemplate(title, body, extraHead = "") {
   ${extraHead}
   <style>
     :root{
-      --bg0:#070a10;
-      --bg1:#0a0f18;
+      /* Dark Purple/Pink Theme (TrashBox Style) */
+      --bg0:#0d0a1a;
+      --bg1:#15112b;
+      --bg2:#1d1736;
 
-      --card: rgba(15,23,42,.92);
-      --card2: rgba(11,18,32,.92);
-      --border: rgba(39,55,86,.92);
+      --card: rgba(30,20,50,.85);
+      --card2: rgba(20,15,35,.88);
+      --border: rgba(150,80,150,.25);
 
-      --text:#eef2ff;
-      --muted:#b8c3d6;
+      --text:#f5f3ff;
+      --muted:#c4b5fd;
 
-      --brand:#60a5fa;
-      --brand2:#818cf8;
+      /* Pink/Magenta Brand */
+      --brand:#e91e63;
+      --brand-light:#f06292;
+      --brand2:#ab47bc;
 
       --danger:#ef4444;
 
@@ -268,8 +272,9 @@ function pageTemplate(title, body, extraHead = "") {
       color:var(--text);
       min-height:100vh;
       background:
-        radial-gradient(1200px 600px at 20% -10%, rgba(96,165,250,.10), transparent 60%),
-        radial-gradient(900px 500px at 90% 0%, rgba(129,140,248,.08), transparent 55%),
+        radial-gradient(1200px 600px at 15% -5%, rgba(233,30,99,.15), transparent 65%),
+        radial-gradient(900px 500px at 85% 5%, rgba(171,71,188,.12), transparent 60%),
+        radial-gradient(700px 400px at 50% 100%, rgba(156,39,176,.08), transparent 55%),
         linear-gradient(180deg, var(--bg1), var(--bg0));
     }
 
@@ -290,13 +295,17 @@ function pageTemplate(title, body, extraHead = "") {
 
     .card{
       background:
-        linear-gradient(180deg, rgba(255,255,255,.04), transparent 40%),
+        linear-gradient(180deg, rgba(255,255,255,.06), transparent 50%),
         var(--card);
-      border:1px solid var(--border);
-      border-radius:18px;
-      padding:16px;
-      margin:12px 0;
-      box-shadow: 0 14px 40px rgba(0,0,0,.35);
+      border:1px solid rgba(200,100,200,.3);
+      border-radius:20px;
+      padding:18px;
+      margin:14px 0;
+      box-shadow: 
+        0 4px 24px rgba(0,0,0,.4),
+        0 0 1px rgba(233,30,99,.3);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
       overflow:hidden;
     }
 
@@ -343,21 +352,27 @@ function pageTemplate(title, body, extraHead = "") {
       padding:10px 12px;
       border-radius:14px;
       border:1px solid var(--border);
-      background: rgba(96,165,250,.12);
+      background: rgba(233,30,99,.12);
       color:var(--text);
       cursor:pointer;
       transition: transform .06s ease, background .15s ease, border-color .15s ease, filter .15s ease;
       white-space:nowrap;
     }
     button:hover{
-      background: rgba(96,165,250,.16);
-      border-color: rgba(96,165,250,.28);
-      filter: brightness(1.03);
+      background: rgba(233,30,99,.18);
+      border-color: rgba(233,30,99,.35);
+      filter: brightness(1.05);
     }
     button:active{transform: translateY(1px)}
     .btn-primary{
-      background: linear-gradient(135deg, rgba(96,165,250,.28), rgba(129,140,248,.22));
-      border-color: rgba(96,165,250,.38);
+      background: linear-gradient(135deg, rgba(233,30,99,.35), rgba(171,71,188,.28));
+      border-color: rgba(233,30,99,.45);
+      box-shadow: 0 4px 14px rgba(233,30,99,.25);
+    }
+    .btn-primary:hover{
+      background: linear-gradient(135deg, rgba(233,30,99,.45), rgba(171,71,188,.38));
+      border-color: rgba(240,98,146,.55);
+      box-shadow: 0 6px 18px rgba(233,30,99,.35);
     }
     .btn-ghost{background: rgba(255,255,255,.04)}
     .danger{
