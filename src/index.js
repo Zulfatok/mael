@@ -1076,6 +1076,7 @@ const PAGES = {
       </div>
 
       <script>
+        const DOMAIN = '${domain}';
         function esc(s){return (s||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));}
 
         async function api(path, opts){
@@ -1087,6 +1088,7 @@ const PAGES = {
           }
           return j;
         }
+
 
         async function loadUsers(){
           const j = await api('/api/admin/users');
@@ -1100,24 +1102,76 @@ const PAGES = {
           for(const u of j.users){
             const div=document.createElement('div');
             div.className='listItem';
+            div.style.borderBottom='1px solid var(--border)';
+            div.style.paddingBottom='12px';
+            div.style.paddingTop='12px';
+            div.style.display='block';
             div.innerHTML =
-              '<div style="min-width:260px">'+
-                '<div><b>'+esc(u.username)+'</b> <span class="muted">('+esc(u.email)+')</span></div>'+
-                '<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+
-                  (u.role==='admin' ? '<span class="pill">admin</span>' : '<span class="pill">user</span>')+
-                  (u.disabled?'<span class="pill">disabled</span>':'')+
-                  '<span class="pill">created: '+esc(u.created_at)+'</span>'+
+              '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">'+
+                '<div style="min-width:260px">'+
+                  '<div><b>'+esc(u.username)+'</b> <span class="muted">('+esc(u.email)+')</span></div>'+
+                  '<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+
+                    (u.role==='admin' ? '<span class="pill">admin</span>' : '<span class="pill">user</span>')+
+                    (u.disabled?'<span class="pill">disabled</span>':'')+
+                    '<span class="pill">'+u.alias_count+' mail</span>'+
+                    '<span class="pill">created: '+esc(u.created_at)+'</span>'+
+                  '</div>'+
+                '</div>'+
+                '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
+                  '<input id="lim_'+esc(u.id)+'" value="'+u.alias_limit+'" style="width:120px" />'+
+                  '<button class="btn-primary" onclick="setLimit(\\''+esc(u.id)+'\\')">Set limit</button>'+
+                  '<button onclick="toggleAliases(\\''+esc(u.id)+'\\')" class="btn-ghost">Lihat Mail</button>'+
+                  '<button onclick="toggleUser(\\''+esc(u.id)+'\\','+(u.disabled?0:1)+')" class="danger">'+(u.disabled?'Enable':'Disable')+'</button>'+
+                  '<button onclick="delUser(\\''+encodeURIComponent(u.id)+'\\')" class="danger">Delete</button>'+
                 '</div>'+
               '</div>'+
-              '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
-                '<input id="lim_'+esc(u.id)+'" value="'+u.alias_limit+'" style="width:120px" />'+
-                '<button class="btn-primary" onclick="setLimit(\\''+esc(u.id)+'\\')">Set limit</button>'+
-                '<button onclick="toggleUser(\\''+esc(u.id)+'\\','+(u.disabled?0:1)+')" class="danger">'+(u.disabled?'Enable':'Disable')+'</button>'+
-                '<button onclick="delUser(\\''+encodeURIComponent(u.id)+'\\')" class="danger">Delete</button>'+
-              '</div>';
+              '<div id="aliases_'+esc(u.id)+'" style="display:none;margin-top:12px"></div>';
             box.appendChild(div);
           }
         }
+
+        async function toggleAliases(userId){
+          const aliasBox = document.getElementById('aliases_'+userId);
+          if(!aliasBox) return;
+
+          // Toggle visibility
+          if(aliasBox.style.display !== 'none' && aliasBox.innerHTML !== ''){
+            aliasBox.style.display = 'none';
+            return;
+          }
+
+          // Load aliases
+          aliasBox.innerHTML = '<div class="muted">Loading...</div>';
+          aliasBox.style.display = 'block';
+
+          const j = await api('/api/admin/users/'+encodeURIComponent(userId)+'/aliases');
+          if(!j.ok){
+            aliasBox.innerHTML = '<div class="muted">Error: '+esc(j.error||'gagal')+'</div>';
+            return;
+          }
+
+          if(j.aliases.length === 0){
+            aliasBox.innerHTML = '<div class="muted" style="padding:12px;background:rgba(255,255,255,.02);border-radius:12px">User ini belum membuat mail.</div>';
+            return;
+          }
+
+          let html = '<div style="padding:12px;background:rgba(255,255,255,.02);border-radius:12px;border:1px solid var(--border)">';
+          html += '<div class="muted" style="margin-bottom:10px"><b>Daftar Mail:</b></div>';
+          for(const a of j.aliases){
+            html += '<div style="padding:8px 0;border-bottom:1px solid rgba(71,85,105,.25);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">'+
+              '<div>'+
+                '<div style="font-family:ui-monospace,monospace;font-size:13px"><b>'+esc(a.local_part)+'@'+DOMAIN+'</b></div>'+
+                '<div class="muted" style="font-size:12px;margin-top:2px">Created: '+esc(a.created_at)+'</div>'+
+              '</div>'+
+              '<div>'+
+                (a.disabled ? '<span class="pill" style="background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4)">disabled</span>' : '<span class="pill" style="background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.4)">active</span>')+
+              '</div>'+
+            '</div>';
+          }
+          html += '</div>';
+          aliasBox.innerHTML = html;
+        }
+
 
         async function setLimit(id){
           const v = document.getElementById('lim_'+id).value;
@@ -1656,16 +1710,43 @@ export default {
           if (me.role !== "admin") return forbidden("Forbidden");
 
           const rows = await env.DB.prepare(
-            `SELECT id, username, email, role, alias_limit, disabled, created_at
-             FROM users ORDER BY created_at DESC LIMIT 200`
+            `SELECT u.id, u.username, u.email, u.role, u.alias_limit, u.disabled, u.created_at,
+                    COUNT(a.local_part) as alias_count
+             FROM users u
+             LEFT JOIN aliases a ON a.user_id = u.id
+             GROUP BY u.id
+             ORDER BY u.created_at DESC LIMIT 200`
           ).all();
 
           const users = (rows.results || []).map((u) => ({
             ...u,
             created_at: new Date(u.created_at * 1000).toISOString(),
+            alias_count: Number(u.alias_count || 0),
           }));
 
           return json({ ok: true, users });
+        }
+
+        if (path.startsWith("/api/admin/users/") && path.endsWith("/aliases") && request.method === "GET") {
+          if (me.role !== "admin") return forbidden("Forbidden");
+
+          const userId = decodeURIComponent(path.slice("/api/admin/users/".length, path.length - "/aliases".length));
+
+          const rows = await env.DB.prepare(
+            `SELECT local_part, disabled, created_at
+             FROM aliases
+             WHERE user_id = ?
+             ORDER BY created_at DESC`
+          )
+            .bind(userId)
+            .all();
+
+          const aliases = (rows.results || []).map((a) => ({
+            ...a,
+            created_at: new Date(a.created_at * 1000).toISOString(),
+          }));
+
+          return json({ ok: true, aliases });
         }
 
         if (path.startsWith("/api/admin/users/") && request.method === "PATCH") {
