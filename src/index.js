@@ -479,6 +479,12 @@ function pageTemplate(title, body, extraHead = "") {
       .hdr{flex-direction:column;align-items:flex-start}
       .row{grid-template-columns:1fr}
       .mailFrame{height: 58vh;}
+      
+      /* Admin page mobile optimization */
+      .listItem{flex-direction:column;align-items:flex-start!important}
+      .listItem > div{width:100%!important;min-width:0!important}
+      .listItem input{width:100%!important;max-width:none!important}
+      .listItem button{flex:1;min-width:0;font-size:13px;padding:10px 12px}
     }
   </style>
 </head>
@@ -1107,22 +1113,27 @@ const PAGES = {
             div.style.paddingTop='12px';
             div.style.display='block';
             div.innerHTML =
-              '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">'+
-                '<div style="min-width:260px">'+
+              '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">'+
+                '<div style="flex:1;min-width:200px">'+
                   '<div><b>'+esc(u.username)+'</b> <span class="muted">('+esc(u.email)+')</span></div>'+
-                  '<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+
+                  '<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">'+
                     (u.role==='admin' ? '<span class="pill">admin</span>' : '<span class="pill">user</span>')+
                     (u.disabled?'<span class="pill">disabled</span>':'')+
                     '<span class="pill">'+u.alias_count+' mail</span>'+
-                    '<span class="pill">created: '+esc(u.created_at)+'</span>'+
                   '</div>'+
+                  '<div class="muted" style="font-size:11px;margin-top:4px">Created: '+esc(u.created_at)+'</div>'+
                 '</div>'+
-                '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
-                  '<input id="lim_'+esc(u.id)+'" value="'+u.alias_limit+'" style="width:120px" />'+
-                  '<button class="btn-primary" onclick="setLimit(\\''+esc(u.id)+'\\')">Set limit</button>'+
-                  '<button onclick="toggleAliases(\\''+esc(u.id)+'\\')" class="btn-ghost">Lihat Mail</button>'+
-                  '<button onclick="toggleUser(\\''+esc(u.id)+'\\','+(u.disabled?0:1)+')" class="danger">'+(u.disabled?'Enable':'Disable')+'</button>'+
-                  '<button onclick="delUser(\\''+encodeURIComponent(u.id)+'\\')" class="danger">Delete</button>'+
+                '<div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;width:100%">'+
+                  '<div style="display:flex;gap:8px;align-items:center;flex:1;min-width:200px">'+
+                    '<label style="font-size:12px;margin:0;white-space:nowrap;color:var(--muted)">Limit:</label>'+
+                    '<input id="lim_'+esc(u.id)+'" value="'+u.alias_limit+'" style="width:80px;padding:8px" />'+
+                    '<button class="btn-primary" style="flex-shrink:0" onclick="setLimit(\\''+esc(u.id)+'\\')">Set</button>'+
+                  '</div>'+
+                  '<div style="display:flex;gap:8px;flex-wrap:wrap;width:100%">'+
+                    '<button onclick="toggleAliases(\\''+esc(u.id)+'\\')" class="btn-ghost" style="flex:1">📧 Lihat Mail</button>'+
+                    '<button onclick="toggleUser(\\''+esc(u.id)+'\\','+(u.disabled?0:1)+')" class="danger" style="flex:1">'+(u.disabled?'✓ Enable':'✕ Disable')+'</button>'+
+                    '<button onclick="delUser(\\''+encodeURIComponent(u.id)+'\\')" class="danger" style="flex:1">🗑 Delete</button>'+
+                  '</div>'+
                 '</div>'+
               '</div>'+
               '<div id="aliases_'+esc(u.id)+'" style="display:none;margin-top:12px"></div>';
@@ -1155,16 +1166,16 @@ const PAGES = {
             return;
           }
 
-          let html = '<div style="padding:12px;background:rgba(255,255,255,.02);border-radius:12px;border:1px solid var(--border)">';
-          html += '<div class="muted" style="margin-bottom:10px"><b>Daftar Mail:</b></div>';
+          let html = '<div style="padding:10px;background:rgba(255,255,255,.02);border-radius:12px;border:1px solid var(--border)">';
+          html += '<div class="muted" style="margin-bottom:10px;font-size:13px"><b>📧 Daftar Mail:</b></div>';
           for(const a of j.aliases){
-            html += '<div style="padding:8px 0;border-bottom:1px solid rgba(71,85,105,.25);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">'+
-              '<div>'+
-                '<div style="font-family:ui-monospace,monospace;font-size:13px"><b>'+esc(a.local_part)+'@'+DOMAIN+'</b></div>'+
-                '<div class="muted" style="font-size:12px;margin-top:2px">Created: '+esc(a.created_at)+'</div>'+
+            html += '<div style="padding:10px 0;border-bottom:1px solid rgba(71,85,105,.25);display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">'+
+              '<div style="flex:1;min-width:0;overflow-wrap:break-word">'+
+                '<div style="font-family:ui-monospace,monospace;font-size:12.5px;word-break:break-all"><b>'+esc(a.local_part)+'@'+DOMAIN+'</b></div>'+
+                '<div class="muted" style="font-size:11px;margin-top:3px">'+esc(new Date(a.created_at).toLocaleDateString('id-ID', {day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'}))+'</div>'+
               '</div>'+
-              '<div>'+
-                (a.disabled ? '<span class="pill" style="background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4)">disabled</span>' : '<span class="pill" style="background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.4)">active</span>')+
+              '<div style="flex-shrink:0">'+
+                (a.disabled ? '<span class="pill" style="background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4);font-size:11px">disabled</span>' : '<span class="pill" style="background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.4);font-size:11px">active</span>')+
               '</div>'+
             '</div>';
           }
